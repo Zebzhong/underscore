@@ -314,6 +314,132 @@
     return results;
   }
 
+  //2017/09/10
+  //将一个对象转化为成员是参数对象自身的（不含继承的）所有可遍历（enumerable）属性的键值对数组。
+  //相当于ES6中的Object.entries方法
+  _.pairs = function(obj){
+    var keys = _.keys(obj);
+    var length = keys.length;
+    var pairs = Array(length);
+    for(var i=0;i<length;i++){
+      pairs[i] = [keys[i],obj[keys[i]]];
+    }
+    return pairs;
+  }
+
+  //将一个对象的Key-value的键值颠倒
+  //注意：如果原来对象的value值重复，则后来的会覆盖前面的
+  _.invert = function(obj){
+    var result = {};
+    var keys = _.keys(obj);
+    for(var i=0,length=keys.length;i<length;i++){
+      result[obj[keys[i]]] = keys[i];
+    }
+    return result;
+  }
+
+  // 传入一个对象
+  // 遍历该对象的键值对（包括 own properties 以及 原型链上的）
+  // 如果某个 value 的类型是方法（function），则将该 key 存入数组
+  // 将该数组排序后返回,且放弃了对nonEnumerableProps数组里方法的重写支持
+  _.functions = _.methods = function(obj){
+    var names = [];
+    for(var key in obj){
+      if(_.isFunction(obj[key]))names.push(key);
+    }
+    return names.sort();
+  }
+
+  //将几个对象进行融合，相当于es6的Object.assign()方法
+  //但是将继承的方法也融合
+  _.extends = createAssigner(_.allkeys);
+
+  //与上面的方法一致，区别是只会融合own properties的键值对
+  _.extendOwn = _.assign = createAssigner(_.keys);
+
+  // 和 _.extend 非常类似
+  // 区别是如果 *defaults 中出现了和 object 中一样的键
+  // 则不覆盖 object 的键值对
+  // 如果 *defaults 多个参数对象中有相同 key 的对象
+  // 则取最早出现的 value 值
+  // 参数个数 >= 1
+  _.defaults = createAssigner(_.allKeys,true);
+
+  // 跟数组方法的 _.findIndex 类似
+  // 找到对象的键值对中第一个满足条件的键值对
+  // 并返回该键值对 key 值
+  _.findKey = function(obj,predicate,context){
+    //如果传入了context，则将predicate的this指向context
+    predicate = cb(predicate,context);
+
+    var keys = _.keys(obj),
+    key;
+    //遍历键值对
+    for(var i=0,length = keys.length;i<length;i++){
+      key = keys[i];
+      if(predicate(obj[key]),key,obj)return key;
+    }
+  }
+
+  _.pick = function(object,oiteratee,context){
+    var result = {},
+    obj = object,
+    iteratee,keys;
+
+    if(obj == null ) return result;
+  }
+
+  // 给定 prototype
+  // 以及一些 own properties
+  // 构造一个新的对象并返回
+  _.create = function(prototype,props){
+    //相当于调用了ES5的Object.create方法
+    var result = baseCreate(prototype);
+
+    // 将 props 的键值对覆盖(无则添加，有则覆盖) result 对象
+    if(props)_.extendOwn(result,props);
+    return result;
+  }
+
+  // 对象的 `浅复制` 副本
+  // 注意点：所有嵌套的对象或者数组都会跟原对象用同一个引用
+  // 所以是为浅复制，而不是深度克隆
+  _.clone = function(obj){
+
+    //不是对象或数组类型，则直接返回
+    if(!_.isObject(obj))return obj;
+
+    return _.isArray(obj) ? obj.slice():_.extend({},obj);
+  }
+
+  // 主要是用在链式调用中
+  // 对中间值立即进行处理
+  _.tap = function(obj, interceptor) {
+    interceptor(obj);
+    return obj;
+  };
+
+  _.isMatch = function(object,attrs){
+    // 提取 attrs 对象的所有 keys,返回一个数组
+    var keys = _.keys(attrs),
+        length = keys.length;
+
+    // 如果 object 为空
+    // 根据 attrs 的键值对数量返回布尔值      
+    if(object == null)return !length;
+
+    var obj = Object(object);
+
+    for(var i=0;i<length;i++){
+      var key = keys[i];
+
+      // attrs[key] !== obj[key]是用来判断两个对象里都没有  
+      if(attrs[key] !== obj[key] || !(key in obj)) return false;
+    }
+    return true;
+  }
+
+  
   //判断对象中是否有指定的key，只判断是否是自身的key
   _.has = function(obj,key){
     //obj不能为null或Undenfined
@@ -329,9 +455,24 @@
 
 
 
-
-
-
+var mult = (function(){
+  var cache = {};
+  var calc = function(){
+    var a = 1;
+    for(var i=0,length = arguments.length;i<length;i++){
+      a = a*arguments[i];
+    }
+    return a;
+  }
+  return function(){
+    var argStr = Array.prototype.join.call(arguments,',');
+    if(argStr in cache){
+      return cache[argStr];
+    }
+    return cache[argStr] = calc.apply(null,arguments);
+  }
+})()
+console.log(mult(1,2,3))
 
 
 
