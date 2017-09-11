@@ -5,3 +5,6 @@
   发现，当初有很多后面封装的方法不熟悉，导致总是要去查找相对应的方法，所以后来就换了顺序，先由Object扩
   展的方法开始，如_.keys,_.allKeys等方法，建议js初学者，如果要学习此源码，可以从后往前开始敲，待熟悉后
   ，再从头开始敲，源码参考:https://github.com/hanzichi/underscore-analysis
+
+2.2017/9/12
+  增加了一些类型判断的方法，主要调用Object.prototype.toString函数，来判断还有一些特殊的处理

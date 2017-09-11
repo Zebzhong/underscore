@@ -178,7 +178,7 @@
   function createReduce(dir){
     function iterator(obj,iteratee,memo,keys,index,length){
       for(;index>=0&&index<length;index+=dir){
-        var currentKey = keys ? keys[]
+        var currentKey = keys ? keys[index] : index;
       }
       return memo;
     }
@@ -439,7 +439,96 @@
     return true;
   }
 
-  
+  //eq方法作用是比较两个值是否相等，太长，后期来补，先搞懂其他的再说
+
+  // 判断两个对象是否一样
+  // new Boolean(true)，true 被认为 equal
+  // [1, 2, 3], [1, 2, 3] 被认为 equal
+  // 0 和 -0 被认为 unequal
+  // NaN 和 NaN 被认为 equal
+  _.isEqual = function(a,b){
+    return eq(a,b)
+  }
+
+  //判断是否是{},[]或者"" null undefined
+  _.isEmpty = function(obj){
+    if(obj == null ) return true;
+    //
+    if(isArrayLike(obj)&&(_.isArray(obj)||_.isString(obj) || _.isArguments(obj))) return obj.length === 0;
+  }
+
+  _.isElement = function(obj){
+    //前面两个!是为了保证obj不是Null ,如果
+    //不加，则输入为null时得到的结果是Null，而不是boolean值
+    return !!(obj && obj.nodeType ===1)
+  }
+
+  //判断是否为数组
+  _.isArray = nativeIsArray || function(obj){
+    return toString.call(obj)==='[object Array]';
+  }
+
+  //判断是否为对象，这里将function也列为对象了，排除null
+  _.isObject = function(obj){
+    var type = typeof obj;
+    return type === 'function' || type === 'object' && !!obj;
+  }
+
+  //一次生成其他的类型判断
+  _.each(['Arguments','Function','String','Number', 'Date', 'RegExp', 'Error'],funciton(){
+    _['is'+name] = function(obj){
+      return toString.call(obj) === '[object '+name+']';
+    }
+  })
+  //对isArguments方法在IE<9以下的兼容
+  // IE < 9 下对 arguments 调用 Object.prototype.toString.call 方法
+  // 结果是 => [object Object]
+  // 而并非期望的 [object Arguments]。
+  // 所以用是否含有 callee 属性来做兼容
+  if(!_.isArgumets(arguments)){
+    _.isArguments = function(obj){
+      return _.has(obj,'callee');
+    }
+  }
+
+  //不知道这两个判断是什么意思，百度了下，/./是正则对象，后面的Int8Array是一个8位整数值的类型转化的对象
+  //https://segmentfault.com/q/1010000004220008
+  //https://msdn.microsoft.com/library/br212462(v=vs.94).aspx
+  //个人感觉没什么必要，等敲第二遍的时候来细想吧
+  if (typeof /./ != 'function' && typeof Int8Array != 'object') {
+    _.isFunction = function(obj) {
+      return typeof obj == 'function' || false;
+    };
+  }
+
+  // 判断是否是有限的数字
+  _.isFinite = function(obj){
+    return isFinite(obj) && !isNaN(parseFloat(obj));
+  }
+
+  // 判断是否是 NaN
+  // NaN 是唯一的一个 `自己不等于自己` 的 number 类型
+  _.isNaN = function(obj){
+    return _.isNumber(obj) && !== +obj;
+  }
+  //判断是否是布尔值类型
+  //前两个应该是为性能考虑才加的如果前两个判断就出结果了，则不需要调用函数了
+  _.isBoolean = function(obj) {
+    return obj === true || obj === false || toString.call(obj) === '[object Boolean]';
+  };
+  //判断是否为null
+  _.isNull = function(obj){
+    return obj === null
+  }
+  // 判断是否是 undefined
+  // undefined 能被改写 （IE < 9）
+  // undefined 只是全局对象的一个属性
+  // 在局部环境能被重新定义
+  // 但是「void 0」始终是 undefined
+  _.isUndefined = function(obj){
+    return obj === void 0;
+  }
+
   //判断对象中是否有指定的key，只判断是否是自身的key
   _.has = function(obj,key){
     //obj不能为null或Undenfined
