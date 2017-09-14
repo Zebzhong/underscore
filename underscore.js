@@ -699,11 +699,11 @@
   }
 
   //一次生成其他的类型判断
-  _.each(['Arguments', 'Function', 'String', 'Number', 'Date', 'RegExp', 'Error'], funciton() {
-      _['is' + name] = function(obj) {
-        return toString.call(obj) === '[object ' + name + ']';
-      }
-    })
+  _.each(['Arguments', 'Function', 'String', 'Number', 'Date', 'RegExp', 'Error'], function(name) {
+    _['is' + name] = function(obj) {
+      return toString.call(obj) === '[object ' + name + ']';
+    };
+  });
     //对isArguments方法在IE<9以下的兼容
     // IE < 9 下对 arguments 调用 Object.prototype.toString.call 方法
     // 结果是 => [object Object]
@@ -733,7 +733,7 @@
   // 判断是否是 NaN
   // NaN 是唯一的一个 `自己不等于自己` 的 number 类型
   _.isNaN = function(obj) {
-      return _.isNumber(obj) && !== +obj;
+      return _.isNumber(obj) && obj !== +obj;
     }
     //判断是否是布尔值类型
     //前两个应该是为性能考虑才加的如果前两个判断就出结果了，则不需要调用函数了
@@ -759,6 +759,56 @@
     return obj != null && hasOwnProperty.call(obj, key);
   }
 
+  // 数组的扩展方法
+  // 共 20 个扩展方法
+  _.first = _.head = _.take = function(array,n,guard){
+    if(array == null)return void 0;
+    //如果不传n，则返回第一个元素
+    if(n == null || guard) return array[0];
+    // 如果指定了n, 则返回一个新的数组, 包含顺序指定数量n个元素
+    return _.initial(array,arr.length-n);
+  }
+
+  // 传入一个数组
+  // 返回剔除最后一个元素之后的数组副本
+  // 如果传入参数 n，则剔除最后 n 个元素
+  _.initial = function(array,n,guard){
+    // 注意 undenfined == null为true
+    // 而n == null || guard ? 1 : n 这句的执行顺序为(n == null || guard) ? 1 : n
+    // 如果传递参数n, 则返回从最后一个元素开始向前的n个元素外的其它元素
+    // 如果不传n,则默认值为1，即返回剔除最后一个元素之后的数组副本
+    // guard参数用于确定只返回第一个元素, 当guard为true时, 指定数量n无效
+    return slice.call(array,0,Math.max(0,array.length-(n == null || guard ? 1 : n)));
+  }
+
+  _.last = function(array,n,guard){
+    if (array == null) return void 0;
+    
+    // 如果没有指定参数 n，则返回最后一个元素
+    if (n == null || guard) return array[array.length - 1];
+
+    // 如果传入参数 n，则返回后 n 个元素组成的数组
+    // 即剔除前 array.length - n 个元素
+    return _.rest(array, Math.max(0, array.length - n));
+  }
+
+  _.rest = _.tail = _.drop = function(array, n, guard) {
+    //和上面类似
+    return slice.call(array, n == null || guard ? 1 : n);
+  };
+
+  // 去掉数组中所有的假值
+  // 返回数组副本
+  // JavaScript 中的假值包括 false、null、undefined、''、NaN、0
+  // 联想 PHP 中的 array_filter() 函数
+  // _.identity = function(value) {
+  //   return value;
+  // };
+  _.compact = function(array) {
+    return _.filter(array, _.identity);
+  };
+
+  
 
 
 }.call(this))
