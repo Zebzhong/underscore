@@ -24,7 +24,6 @@
 
   //空函数
   var Ctor = function() {};
-
   //确保获得的是_的实例
   var _ = function(obj) {
     if (obj instanceof _) return obj;
@@ -44,63 +43,138 @@
 
   _.VERSION = '1.8.3';
 
-  //？？暂时不知道什么作用
-  var optimizeCb = function(func, context, argCount) {
-    if (context === void 0) return func;
-    switch (argCount == null ? 3 : argCount) {
+  var optimizeCb = function(value,context,argCount){
+    if(context === void 0)return func;
+    switch(argCount == null ? 3 : argCount){
       case 1:
-        return function(value) {
-          return func.call(context, value);
+        return function(value){
+          return func.call(context,value)
         };
       case 2:
-        return function(value, other) {
-          return func.call(context, value, other);
+        return function(value,other){
+          return func.call(context,value,other)
         };
       case 3:
-        return function(value, index, collection) {
-          return func.call(context, value, index, collection);
-        };
+        return function(value,index,collection){
+          return func.call(context,value,index,collection);
+        }; 
       case 4:
-        return function(accumulator, value, index, collection) {
-          return func.call(context, accumulator, value, index, collection)
-        };
-        return function() {
-          return func.apply(context, arguments);
+        return function(accumlator,value,index,collection){
+          return func.call(context,accumlator,value,index,collection)
+        }; 
+    }
+    return function(){
+      return func.apply(context,arguments);
+    }     
+  }
+  var optimizeCb = function(func,context,argCount){
+    if(context == null) return func;
+    switch(argCount == null ? 3 : argCount){
+      case 1:
+        return function(value){
+          return func.call(context,value);
         }
+      case 2:
+        return function(value,other){
+          return func.call(context,value,other);
+        }
+      case 3:
+        return function(value,index,collection){
+          return func.call(context,value,index,collection);
+        }  
+      case 4:
+        return function(accumlator,value,index,collect){
+          return func.call(context,accumlator,value,index,collect)
+        };     
+    }
+    return function(){
+      return func.apply(context,arguments)
     }
   }
-
-
-  var cb = function(value, context, argCount) {
-    if (value == null) return _.identity;
-    if (_.isFunction(value)) return optimizeCb(value, context, argCount);
-    if (_.isObject(value)) return _.matches(value);
+  //传入undefined和null时返回一个函数function(value){return value}
+  var cb = function(value,context,argCount){
+    if(value == null )return _.identity;
+    /*_.identity = function(value) {
+      return value;
+    };*/
+    if(_.isFunction(value))return optimizeCb(value,context,argCount);
+    if(_.isObject(value))return _.matcher(value);
+    /*_.matcher = _.matches = function(attrs) {
+        attrs = _.extendOwn({}, attrs);
+        return function(obj) {
+          return _.isMatch(obj, attrs);
+        };
+    };*/
     return _.property(value);
-  };
+   /*var property = function(key) {
+        return function(obj) {
+          return obj == null ? void 0 : obj[key];
+        };
+      };
+    */
+    //_.property = property;
+  }
+  var cb = function(value,context,argCount){
+    if(value == null) return _.identity;
+    if(_.isFunction(value))return optimizeCb(value,context,argCount);
+    if(_.isObject(value))return _.matcher(value);
+    /*_.matcher =  _.matches = function(attrs){
+      attrs = _.extendOwn({},attrs);
+      return function(obj){
+        return _.isMatch(obj,attrs);
+      }
+    }*/
+    return _.property(value);
+    /*var property = _.property = function(key){
+        return function(obj){
+          return obj == null ? void 0 : obj[key];
+        }
+    } 
+    */
+  }
+
   _.iteratee = function(value, context) {
     return cb(value, context, Infinity);
   };
 
-  //内部函数指定
-  var createAssigner = function(keysFunc, undefinedOnly) {
-    return function(obj) {
+  
+  var createAssigner = function (keysFunc,undefinedOnly) {
+    return function(obj){
       var length = arguments.length;
-      if (length < 2 || obj == null) return obj;
-      for (var index = 1; index < length; index++) {
-        var source = arguments[index],
-          keys = keysFunc(source),
-          l = keys.length;
-        for (var i = 0; i < l; i++) {
+      if(length < 2 || obj == null)return obj;
+      for(var index = 1;index<length;index++){
+        var source = arguments[index];
+        var keys = keysFunc(source),
+            l = keys.length;
+        for(var i = 0;i < l;i++){
           var key = keys[i];
-          if (!undefinedOnly || obj[key] === void 0) {
-            obj[key] = source[key]
+          if(!undefinedOnly || obj[key] === void 0){
+            obj[key] = source[key];
           }
-        }
+        }    
       }
       return obj;
     }
   }
 
+  var createAssigner = function(keysFunc,undefinedOnly){
+    return function(obj){
+      var length = arguments.length;
+      if(length < 2 || obj == null)return obj;
+      for(var index = 1;index<length;index++){
+        var source = arguments[index];
+        var keys = keysFunc(source),
+            l = keys.length;
+        for(var i = 0;i<l;i++){
+          var key = keys[i];
+          if(!undefinedOnly && obj[key] === void 0){
+            obj[key] = source[key];
+          }
+        }    
+      }
+      return obj;
+    }
+  }
   //传入一个原型，生成一个带有空对象的原型，用来实现继承
   var baseCreate = function(prototype) {
 
@@ -116,47 +190,73 @@
     Ctor.prototype = null;
     return result;
   }
+  var baseCreate = function(prototype){
+    if(!_.isObject(prototype))return {};
+    if(nativeCreate) return nativeCreate(prototype);
+    Ctor.prototype = prototype;
+    var result = new Ctor;
+    Ctor.prototype = null;
+    return result;
+  }
 
   //闭包，获取对象的值，如果对象中没有该key，则创建一个
   //值为undenfined
   var property = function(key) {
-      return function(obj) {
-        return obj == null ? void 0 : obj[key];
-      }
+    return function(obj) {
+      return obj == null ? void 0 : obj[key];
     }
+  }
     //Math.pow(2, 53) - 1 是 JavaScript 中能精确表示的最大数字
   var MAX_ARRAY_INDEX = Math.pow(2, 53) - 1;
 
   //该函数传入一个对象参数，来获取对象参数的length值
   // 用来获取 array 以及 arrayLike 元素的 length 属性值
   var getLength = property('length');
-
+  var getLength = property('length');
+  var property = function(key){
+    return function(obj){
+      return obj == null ? void 0 : obj[key];
+    }
+  }
   // 判断是否是 ArrayLike Object
   var isArrayLike = function(collection) {
     var length = getLength(collection);
     return typeof length == 'number' && length >= 0 && length <= MAX_ARRAY_INDEX;
   }
-
-  _.each = _.forEach = function(obj, iteratee, context) {
-    iteratee = optimizeCb(iteratee, context);
-
-    var i, length;
-
-    if (isArrayLike(obj)) {
-      for (i = 0, length = obj.length; i < length; i++) {
-        iteratee(obj[i], i, obj);
+  var isArrayLike = function(collection) {
+    var length = getLength(collection);
+    return typeof length == 'number' && length >= 0 && length <= MAX_ARRAY_INDEX;
+  }
+  _.each = _.forEach = function(obj,iteratee,context){
+    iteratee = optimizeCb(iteratee,context);
+    var i,length;
+    if(isArrayLike(obj)){
+      for(i = 0,length = obj.length;i<length;i++){
+        iteratee(obj[i],i,obj);
       }
-    } else {
+    }else{
       var keys = _.keys(obj);
 
-      for (i = 0, length = keys.length; i < length; i++) {
-        iteratee(obj[keys[i]], keys[i], obj);
+      for(i = 0,length = keys.length;i<length;i++){
+        iteratee(obj[keys[i]],keys[i],obj);
       }
     }
-
     return obj;
   }
-
+  _.each = _.forEach = function(obj,iteratee,context){
+    iteratee = optimizeCb(iteratee,context);
+    var i,length;
+    if(isArrayLike(obj)){
+      for(i = 0,length = obj.length;i<length;i++){
+        iteratee(obj[i],i,obj);
+      }
+    }else{
+      var keys = _.keys(obj);
+      for(i = 0,length = keys.length;i<length;i++){
+        iteratee(obj[keys[i]],keys[i],obj);
+      }
+    }
+  }
   _.map = _.collect = function(obj, iteratee, context) {
     // 根据 context 确定不同的迭代函数
     iteratee = cb(iteratee, context);
@@ -170,28 +270,59 @@
 
     for (var index = 0; index < length; index++) {
       var currentKey = keys ? keys[index] : index;
-      results[index] = iterate(obj[currentKey], currentKey, obj);
+      results[index] = iteratee(obj[currentKey], currentKey, obj);
     }
     return results;
   }
-
+  _.map = _.collect = function(obj,iteratee,context){
+    iteratee = cb(iteratee,context);
+    var keys = !isArrayLike(obj) && _.keys(obj),
+        length = (keys || obj).length,
+        results = Array(length);
+    for(var index = 0;index<length;index++){
+      var currentKey = keys ? keys[index] : index;
+      results[index] = iteratee(obj[currentKey],currentKey,obj);
+    }
+    return results;
+  }
   function createReduce(dir) {
     function iterator(obj, iteratee, memo, keys, index, length) {
       for (; index >= 0 && index < length; index += dir) {
         var currentKey = keys ? keys[index] : index;
+        memo = iteratee(memo, obj[currentKey], currentKey, obj);
       }
       return memo;
     }
     return function(obj, iteratee, memo, context) {
       iteratee = optimizeCb(iteratee, context, 4);
       var keys = !isArrayLike(obj) && _.keys(obj);
-      length = (keys || obj).length,
-        index = dir > 0 ? 0 : length - 1;
+          length = (keys || obj).length,
+          index = dir > 0 ? 0 : length - 1;
       if (arguments.length < 3) {
         memo = obj[keys ? keys[index] : index];
         index += dir;
       }
       return iterator(obj, iteratee, memo, keys, index, length)
+    }
+  }
+  function createReduce(dir){
+    function iterator(obj,iteratee,memo,keys,index,length){
+      for(;index >=0&& index<length;index+=dir){
+        var currentKey = keys ? keys[index] : index;
+        memo = iteratee(memo,obj[currentKey],currentKey,obj);
+        return memo;
+      }
+    }
+    return function(obj,iteratee,memo,context){
+      iteratee = optimizeCb(iteratee,context,4);
+        var keys = !isArrayLike(obj) && _.keys(obj),
+            length = (keys || obj).length,
+            index = dir > 0 ? 0 : length - 1;
+        if(arguments.length<3){
+          memo = obj[keys ? keys[index]:index];
+          index += dir;
+        }
+        return iterator(obj,iteratee,memo,keys,index,length)
     }
   }
   _.contains = _.includes = _.include = function(obj, item, fromIndex, guard) {
@@ -206,8 +337,339 @@
     // 数组中寻找某一元素
     return _.indexOf(obj, item, fromIndex) >= 0;
   };
-  //对象的扩展方法
 
+  _.contains = _.includes = _.include = function(obj,item,fromIndex,guard){
+    if(!isArrayLike(obj)) obj = _.values(obj);
+    /*_.values = function(obj){
+        var keys = _.keys(obj);
+        var length = keys.length;
+        var values = Array(length);
+        for(var i = 0;i<length;i++){
+          values[i] = obj[keys[i]];
+        }
+        return values;
+    }*/
+    if(typeof fromIndex != 'number' || guard) fromIndex = 0;
+    return _.indexOf(obj,item,fromIndex) >= 0;
+  }
+
+  _.reduce = _.foldl = _.inject = createReduce(1);
+
+  _.reduceRight = _.foldr = createReduce(-1);
+
+  _.find = _.detect = function(obj,predicate,context){
+    var key;
+    if(isArrayLike(obj)){
+      key = _.findIndex(obj,predicate,context);
+    }else{
+      key = _.findKey(obj,predicate,context);
+    }
+    if(key !== void 0 && key !== -1)return obj[key];
+  }
+  _.find = _.detect = function(obj,predicate,context){
+    var key;
+    if(isArrayLike(obj)){
+      key = _.findIndex(obj,predicate,context);
+    }else{
+      key = _.findKey(obj,predicate,context);
+    }
+    if(key !== void 0 && key !== -1) return obj[key];
+  }
+
+  _.filter = _.select = function(obj,predicate,context){
+    var results = [];
+    predicate = cb(predicate,context);
+    _.each(obj,function(value,index,list){
+      if(predicate(value,index,list))results.push(value);
+    })
+    return results;
+  }
+
+  _.filter = _.select = function(obj,predicate,context){
+    var results = [];
+    predicate = cb(predicate,context);
+    _.each(obj,function(value,index,list){
+      if(predicate(value,index,list))results.push(value);
+    })
+    return results;
+  }
+
+  _.reject = function(obj,predicate,context){
+    return _.filter(obj,_.negate(cb(predicate)),context);
+  }
+  _.every = _.all = function(obj,predicate,context){
+    predicate = cb(predicate,context);
+    var keys = !isArrayLike(obj) && _.keys(obj),
+        length = (keys || obj).length;
+    for(var index = 0;index<length;index++){
+      var currentKey = keys ? keys[index] : index;
+      if(!predicate(obj[currentKey],currentKey,obj))
+        return false;
+    } 
+    return true;   
+  }
+  _.some = _.any = function(obj,predicate,context){
+    predicate = cb(predicate,context);
+
+    var keys = !isArrayLike(obj) && _.keys(obj),
+        length = (keys || obj).length;
+    for(var index = 0;index<length;index++){
+      var currentKey = keys ? keys[index] : index;
+      if(predicate(obj[currentKey],currentKey,obj))
+        return true;
+    }
+    return false;
+  }
+  _.contains = _.includes = _.include = function(obj,item,fromIndex,guard){
+    if(!isArrayLike(obj))obj = _.value(obj);
+    if(typeof fromIndex != 'number' || guard)fromIndex = 0;
+    return _.indexOf(obj,item,fromIndex)>=0;
+  };
+  _.invoke = function(obj,method){
+    var args = slice.call(arguments,2);
+    var isFunc = _.isFunction(method);
+    return _.map(obj,function(value){
+      var func = isFunc ? method : value[method];
+      return func == null ? func : func.apply(value,args)
+    })
+  }
+  _.pluck = function(obj,key){
+    return _.map(obj,_.prototype(key));
+  }
+  _.where = function(obj,attrs){
+    return _.filter(obj,_.matcher(attrs));
+  }
+  _.findWhere = function(obj, attrs) {
+    return _.find(obj, _.matcher(attrs));
+  };
+  _.max = function(obj,iteratee,context){
+    var result = -Infinity,
+        lastComputed = -Infinity,
+        value, computed;
+    if(iteratee == null && obj != null){
+      obj = isArrayLike(obj) ? obj : _.values(obj);
+      for(var i = 0,length = obj.length;i<length;i++){
+        value = obj[i];
+        if(value > result){
+          result = value;
+        }
+      }
+    }else{
+      iteratee = cb(iteratee,context);
+      _.each(obj,function(value,index,list){
+        computed = iteratee(value,index,list);
+        if(computed > lastComputed || computed === -Infinity && result === -Infinity){
+          result = value;
+          lastComputed = computed;
+        }
+      })
+    } 
+    return result;   
+  }
+  _.min = function(obj,iteratee,context){
+    var result = Infinity,
+        lastComputed = Infinity,
+        value,computed;
+    if(iteratee == null && obj != null){
+      obj = isArrayLike(obj) ? obj : _.values(obj);
+      for(var i = 0,length = obj.length;i<length;i++){
+        value = obj[i];
+        if(value < result){
+          result = value;
+        }
+      }
+    }else{
+      iteratee = cb(iteratee,context);
+      _.each(obj,function(value,index,list){
+        computed = iteratee(value,index,list);
+        if(computed < lastComputed computed === Infinity && result === Infinity){
+          result = value;
+          lastComputed = computed;
+        }
+      })
+    }
+    return result;
+  }
+
+  _.shuffle = function(obj){
+    var set = isArrayLike(obj) ? obj : _.values(obj);
+    var length = set.length;
+
+    var shuffled = Array(length);
+    for(var index = 0,rand;index<length;index++){
+      rand = _.random(0,index);
+      if(rand !== index)shuffled[index] = shuffled[rand];
+      shuffled[rand] = set[index];
+       /*_.random = function(min, max) {
+        if (max == null) {
+          max = min;
+          min = 0;
+        }
+        return min + Math.floor(Math.random() * (max - min + 1));
+      };*/
+    }
+    return shuffled;
+  }
+  _.sample = function(obj,n,guard){
+    if(n == null || guard){
+      if(!isArrayLike(obj)) obj = _.values(obj);
+      return obj[_.random(obj.length-1)];
+    }
+    return _.shuffle(obj).slice(0,Math.max(0,n));
+  }
+  *********
+  _.sortBy = function(obj,iteratee,context){
+    iteratee = cb(iteratee,context);
+    // _.pluck(list, propertyName)
+   /*_.pluck = function(obj, key) {
+      return _.map(obj, _.property(key));
+    };*/
+    return _.pluck(_.map(obj,function(value,index,list){
+      return {
+        value:value,
+        index:index,
+        criteria:iteratee(value,index,list)
+      }
+    }).sort(function(left,right){
+      var a = left.criteria;
+      var b = right.criteria;
+      if(a !== b){
+        if (a > b || a === void 0) return 1;
+        if (a < b || b === void 0) return -1;
+      }
+      return left.index - right.index;
+    }),'value');
+  }
+
+  _.toArray = function(obj){
+    if(!obj)return [];
+    if(_.isArray(obj))return slice.call(obj);
+    // 函数也是isArrayLike
+    if(isArrayLike(obj))return _.map(obj,_.identity);    
+    return _.values(obj);
+  }
+  _.size = function(obj){
+    if(obj == null) return 0;
+    return isArrayLike(obj) ? obj.length : _.keys(obj).length;
+  }
+  _.partition = function(obj,predicate,context){
+    predicate = cb(predicate,context);
+    var pass = [],  
+        fail = [];
+    _.each(obj,function(value,key,obj){
+      (predicate(value,key,obj) ? pass : fail).push(value);
+    }) 
+    return [pass,fail];   
+  }
+  // Array Functions
+  // 数组的扩展方法
+  // 共 20 个扩展方法
+  // Note: All array functions will also work on the arguments object.
+  // However, Underscore functions are not designed to work on "sparse" arrays.
+  // ---------------
+  _.first = _.head = _.take = function(array,n,guard){
+    if(array == null)return void 0;
+    if(n == null || guard)return array[0];
+    return _.initial(array,array.length-n);
+  }
+  _.initial = function(array,n,guard){
+    return slice.call(array,0,Math.max(0,array.length - (n == null || guard ? 1 : n)))
+  }
+  _.last = function(array,n,guard){
+    if(array == null) return void 0;
+    if(n == null || guard)return array[array.length-1];
+    return _.rest(array,Math.max(0,array.length - n));
+  }
+  _.rest = _.tail = _.drop = function(array,n,guard){
+    return slice.call(array,n == null || guard ? 1 : n);
+  }
+  _.compact = function(array){
+    return _.filter(array,_.identity);
+  }
+  var flatten = function(input,shalow,strict,startIndex){
+    var output = [],
+        idx = 0;
+    for(var i = startIndex || 0,length = getLength(input);i<length;i++){
+      var value = input[i];
+      if(isArrayLike(value) && (_.isArray(value)||_.isArgumets(value))){
+        if(!shallow)
+          value = flatten(value,shallow,strict);
+        var j = 0,
+            len = value.length;
+        output.length += len;
+        while(j<len){
+          output[idx++] = value[j++];
+        }
+      }else if(!strict){
+        output[idx++] = value;
+      }
+    }
+    return output;
+  }
+
+  // Function (ahem) Functions
+    // 函数的扩展方法
+    // 共 14 个扩展方法
+  var executeBound = function(sourceFunc,boundFunc,context,callingContext,args){
+    if(!callingContext instanceof boundFunc){
+      return sourceFunc.apply(context,args);
+    }
+    var self = baseCreate(sourceFunc.prototype);
+    var result = sourceFunc.apply(self,args);
+    if(_.isObject(result)){
+      return result;
+    }
+    return self;
+  }
+
+  var _.bind = function(func,context){
+    if(nativeBind && func.bind === nativeBind){
+      return nativeBind.apply(func,slice.call(arguments,1))
+    }
+    if(!_.isFunction(func))
+      throw new TypeError('Bind must be called on a function')
+    var args = slice.apply(arguments,2);
+    var bound = function(){
+      return executeBound(func,bound,context,this,args.concat(slice.call(arguments)));
+    }
+    return bound;
+  }
+
+  _.memoize = function(func,hasher){
+    var memoize = function(key){
+      var cache = memoize.cache;
+      var address = ''+(hasher ? hasher.apply(this,arguments):key);
+      if(!_.has(cache,address)){
+        cache[address] = func.apply(this,arguments);
+      }
+      return cache[address];
+    }
+    memoize.cache = {};
+    return memoize;
+  }
+
+  _.delay = function(func,wait){
+    var args = slice.call(arguments,2);
+    return setTimeout(function(){
+      func.apply(null,args);
+    },wait)
+  }
+  _.negate = function(predicate){
+    return function(){
+      return !predicate.apply(this,arguments);
+    }
+  }
+  _.compose = function(){
+    var args = arguments;
+    var start = args.length - 1 ;
+    return function(){
+      var i = start;
+      var result = args[start].apply(this,arguments);
+      while(i--)
+        result = args[i].call(this,result);
+      return result;
+    }
+  }
   // 在IE < 9 下 不能用 for key in ... 来枚举对象的某些key
   // 比如重写了对象的 `toString` 方法，这个 key 值就不能在 IE < 9 下用 for in 枚举到
   // IE < 9，{toString: null}.propertyIsEnumerable('toString') 返回 false
@@ -215,7 +677,7 @@
   // 据此可以判断是否在 IE < 9 浏览器环境中
   //propertyIsEnumerable是构造方法Object的prototype的一个方法，所以所有对象(除了null和未定义的空对象等特殊情况以外)都能调用
   var hasEnumBug = !{
-    toString: null //重写了toString在IE9以下是无法用for key in obj来枚举的
+    toString:null
   }.propertyIsEnumerable('toString');
   //将对象中不可枚举的属性（方法）用数组nonEnumerableProps保存起来
   var nonEnumerableProps = ['valueOf', 'isPrototypeOf', 'toString',
@@ -240,7 +702,7 @@
     var prop = 'constructor';
 
     //判断对象的自身属性中是否有constructor，且constructor存不存在于keys的参数中
-    if (_.has(obj, prop) && !_.contains(keys, prop))
+    if (_.has(obj, prop) && !_.contains(keys, prop))keys.push(prop);
 
       while (nonEnumIdx--) {
       prop = nonEnumerableProps[nonEnumIdx]
@@ -251,7 +713,29 @@
       }
     }
   }
-
+  var hasEnumBug = !{toString:null}.propertyIsEnumerable('toString');
+  var nonEnumerableProps = ['valueOf','isPrototypeOf','toString','propertyIsEnumerable','hasOwnProperty','toLocaleString'];
+  function collectNonEnumProps(obj,keys){
+    var nonEnumIdx = nonEnumerableProps.length;
+    var constructor = obj.constructor;
+    var proto = (_.isFunction(constructor) && constructor.prototype || objProto)
+    var prop = 'constructor';
+    if(_.has(obj,prop) && !_.containes(keys,prop))keys.push(prop);
+    while(nonEnumIdx--){
+      prop = nonEnumerableProps[nonEnumIdx];
+      if(prop in obj && obj[prop] !== proto[prop] && !_.contains(keys,prop)){
+        keys.push(prop);
+      }
+    }
+  }
+  _.keys = function(obj){
+    if(!_.isObject(obj))return [];
+    if(nativeKeys)return nativeKeys(obj);
+    var keys = [];
+    for(var key in obj)if(_.has(obj,key))keys.push(key);
+    if(hasEnumBug) collectNonEnumProps(obj,keys);
+    return keys;
+  }
   _.keys = function(obj) {
     if (!_.isObject(obj)) return [];
     if (nativeKeys) return nativeKeys(obj);
@@ -273,16 +757,22 @@
   //返回的是一个数组类型
   _.allKeys = function(obj) {
 
-      if (!_.isObject(obj)) return [];
+    if (!_.isObject(obj)) return [];
 
-      var keys = [];
-      for (var key in obj) keys.push(key);
+    var keys = [];
+    for (var key in obj) keys.push(key);
 
-      // IE < 9 下的 bug，同 _.keys 方法
-      if (hasEnumBug) collectNonEnumProps(obj, keys);
+    // IE < 9 下的 bug，同 _.keys 方法
+    if (hasEnumBug) collectNonEnumProps(obj, keys);
 
-      return keys;
-    }
+    return keys;
+  }
+  _.allkeys = function(obj){
+    if(!_.isObject(obj))return [];
+    var keys = [];
+    for(var key in obj) keys.push(key);
+    if(hasEnumBug)collectNonEnumProps(obj,keys);
+  }
     // 将一个对象的所有 values 值放入数组中
     // 仅限 own properties 上的 values
   _.values = function(obj) {
@@ -704,11 +1194,11 @@
       return toString.call(obj) === '[object ' + name + ']';
     };
   });
-    //对isArguments方法在IE<9以下的兼容
-    // IE < 9 下对 arguments 调用 Object.prototype.toString.call 方法
-    // 结果是 => [object Object]
-    // 而并非期望的 [object Arguments]。
-    // 所以用是否含有 callee 属性来做兼容
+  //对isArguments方法在IE<9以下的兼容
+  // IE < 9 下对 arguments 调用 Object.prototype.toString.call 方法
+  // 结果是 => [object Object]
+  // 而并非期望的 [object Arguments]。
+  // 所以用是否含有 callee 属性来做兼容
   if (!_.isArgumets(arguments)) {
     _.isArguments = function(obj) {
       return _.has(obj, 'callee');
@@ -761,29 +1251,29 @@
 
   // 数组的扩展方法
   // 共 20 个扩展方法
-  _.first = _.head = _.take = function(array,n,guard){
-    if(array == null)return void 0;
+  _.first = _.head = _.take = function(array, n, guard) {
+    if (array == null) return void 0;
     //如果不传n，则返回第一个元素
-    if(n == null || guard) return array[0];
+    if (n == null || guard) return array[0];
     // 如果指定了n, 则返回一个新的数组, 包含顺序指定数量n个元素
-    return _.initial(array,arr.length-n);
+    return _.initial(array, arr.length - n);
   }
 
   // 传入一个数组
   // 返回剔除最后一个元素之后的数组副本
   // 如果传入参数 n，则剔除最后 n 个元素
-  _.initial = function(array,n,guard){
+  _.initial = function(array, n, guard) {
     // 注意 undenfined == null为true
     // 而n == null || guard ? 1 : n 这句的执行顺序为(n == null || guard) ? 1 : n
     // 如果传递参数n, 则返回从最后一个元素开始向前的n个元素外的其它元素
     // 如果不传n,则默认值为1，即返回剔除最后一个元素之后的数组副本
     // guard参数用于确定只返回第一个元素, 当guard为true时, 指定数量n无效
-    return slice.call(array,0,Math.max(0,array.length-(n == null || guard ? 1 : n)));
+    return slice.call(array, 0, Math.max(0, array.length - (n == null || guard ? 1 : n)));
   }
 
-  _.last = function(array,n,guard){
+  _.last = function(array, n, guard) {
     if (array == null) return void 0;
-    
+
     // 如果没有指定参数 n，则返回最后一个元素
     if (n == null || guard) return array[array.length - 1];
 
@@ -808,69 +1298,376 @@
     return _.filter(array, _.identity);
   };
 
-  
+  // 函数的扩展方法
+  // 共 14 个扩展方法
+
+  var executeBound = function(sourceFunc, boundFunc, context, callingContext, args) {
+    if (!(callingContext instanceof boundFunc))
+      return sourceFunc.apply(context, args);
+    // self 为 sourceFunc 的实例，继承了它的原型链
+    var self = baseCreate(sourceFunc.prototype);
+    // 用 new 生成一个构造函数的实例
+    // 正常情况下是没有返回值的，即 result 值为 undefined
+    // 如果构造函数有返回值
+    // 如果返回值是对象（非 null），则 new 的结果返回这个对象
+    // 否则返回实例
+    var result = sourceFunc.apply(self, args);
+    // 如果构造函数返回了对象
+    // 则 new 的结果是这个对象
+    // 返回这个对象
+    if (_.isObject(result)) return result;
+    // 否则返回 self
+    // var result = sourceFunc.apply(self, args);
+    // self 对象当做参数传入
+    // 会直接改变值
+    return self;
+  }
+
+  _.bind = function(func, context) {
+    // 如果浏览器支持 ES5 bind 方法，并且 func 上的 bind 方法没有被重写
+    // 则优先使用原生的 bind 方法
+    if (nativeBind && func.bind)
+      return nativeBind.apply(func, slice(arguments, 1));
+
+    if (_.isFunction(func))
+      throw new TypeError('Bind must be called on a function');
+
+    var args = slice(arguments, 2);
+    var bound = function() {
+      return executeBound(func, bound, context, this, args.concat(slice.call(arguments)));
+    }
+
+    return bound;
+  }
+
+  _.partial = function() {
+    // 如果传入的是 _，则这个位置的参数暂时空着，等待手动填入
+    var boundArgs = slice.call(arguments, 1)
+
+    var bound = function() {
+      var position = 0,
+        length = boundArgs.length;
+      var args = Array(length);
+      for (var i = 0; i < length; i++) {
+        args[i] = boundArgs[i] === _ ? arguments[position++] : boundArgs[i];
+      }
+      while (position < arguments.length)
+        arguments.push(arguments[position++]);
+      return executeBound(func, bound, this, this, args);
+    };
+
+    return bound;
+  }
+
+  _.bindAll = function(obj) {
+    var i, length = arguments.length,
+      key;
+
+    if (length <= 1)
+      throw new Error('bindAll must be passed function names')
+    for (var i=1;i<length;i++){
+      key = arguments[i];
+      obj[key] = _.bind(obj[key],obj);
+    }
+    return obj;
+  }
+  _.memoize = function(func,hasher){
+    var memoize = function(key){
+      var cache = memoize.cache;
+
+      var address = '' + (hasher ? hasher.apply(this,arguments):key);
+
+      if(!_.has(cache,address))
+        cache[address] = func.apply(this,arguments);
+
+      return cache[address];
+    };
+
+    memoize.cache = {};
+
+    return memoize;
+  }
+
+  // 对象的扩展方法
+
+
 
 
 }.call(this))
 
 
 
-var mult = (function() {
+===============================
+var mult = (function(){
   var cache = {};
-  var calc = function() {
+  var calculate = function(){
     var a = 1;
-    for (var i = 0, length = arguments.length; i < length; i++) {
+    for(var i = 0,l = arguments.length;i<l;i++){
+      a = a*arguments[i];
+    }
+    return a;
+  }
+  return function(){
+    var args = Array.prototype.join.call(arguments),
+    if(cache[args]){
+      return cache[args]
+    }else{
+      return cache[args] = calculate(arguments);
+    }
+  }
+})()
+var mult = (function(){
+  var cache = {};
+  var calculate = function(){
+    var a = 1;
+    for(var i=0,l=arguments.length;i<l;i++){
       a = a * arguments[i];
     }
     return a;
   }
-  return function() {
-    var argStr = Array.prototype.join.call(arguments, ',');
-    if (argStr in cache) {
-      return cache[argStr];
+  return function(){
+    var args = Array.prototype.join.call(arguments);
+    if(args in cache){
+      return cache[args];
+    }else{
+      return cache[args] = calculate(arguments);
     }
-    return cache[argStr] = calc.apply(null, arguments);
   }
 })()
-console.log(mult(1, 2, 3))
-
-
-
-_.matcher(value)
-
-function(obj) {
-  return _.isMatch(obj, attrs);
-};
-
-_.matcher = _.matches = function(attrs) {
-  attrs = _.extendOwn({}, attrs); //attrs = {name:1,age:12}
-  return function(obj) {
-    return _.isMatch(obj, attrs);
-  };
-};
-
-_.isMatch = function(object, attrs) {
-  // 提取 attrs 对象的所有 keys,返回一个数组
-  var keys = _.keys(attrs),
-    length = keys.length;
-
-  // 如果 object 为空
-  // 根据 attrs 的键值对数量返回布尔值
-  if (object == null) return !length;
-
-  // 这一步有必要？
-  var obj = Object(object);
-
-  // 遍历 attrs 对象键值对
-  for (var i = 0; i < length; i++) {
-    var key = keys[i];
-
-    // 如果 obj 对象没有 attrs 对象的某个 key
-    // 或者对于某个 key，它们的 value 值不同
-    // 则证明 object 并不拥有 attrs 的所有键值对
-    // 则返回 false
-    if (attrs[key] !== obj[key] || !(key in obj)) return false;
+function report = (function(){
+  var imgs = [];
+  return function(src){
+    var img = new Image();
+    imgs.push(img);
+    img.src = src;
   }
+})()
+var report = (function(){
+  var imgs = [];
+  return function(src){
+    var img = new Image();
+    img.push(img);
+    img.src = src;
+  }
+})()
+//函数节流
+var throttle = function(fn,interval){
+  var _self = fn,
+      timer,
+      firstTime = true;
+  return function(){
+    var args = arguments,
+        _me = this;
+    if(firstTime){
+      _self.apply(_me,args);
+      return firstTime = false;
+    }
+    if(timer){
+      return false;
+    }
+    timer = setTimeout(function(){
+      clearTimeout(timer);
+      timer = null;
+      _self.apply(_me,args);
+    },interval||500)
+  }    
+}
+var throttle = function(fn,interval){
+  var _self = fn,
+      timer,
+      firstTime;
+  return function(){
+    var args = arguments,
+        _me = this;
+    if(firstTime){
+      _self.apply(_me,arguments);
+      firstTime = false;
+    }
+    if(timer){return false}
+    timer = setTimeout(function(){
+      clearTimeout(timer);
+      timer = null;
+      _self.apply(_me,args);
+    },interval||500)
+  }
+}
+var addEvent = function(elem,type,hanlder){
+  if(window.addEventListener){
+    addEvent = function(elem,type,hanlder){
+      elem.addEventListener(type,hanlder,false)
+    }
+  }else if(window.attachEvent){
+    addEvent = function(elem,type,hanlder){
+      elem.attachEvent('on'+type,hanlder)
+    }
+  }
+  addEvent(elem,type,hanlder)
+}
+var addEvent = function(elem,type,handler){
+  if(window.addEventListener){
+    addEvent = function(elem,type,handler){
+      return elem.addEventListener(type,handler,false)
+    }
+  }else if(window.attachEvent){
+    addEvent = function(elem,type,handler){
+      return elem.attachEvent('on'+type,handler);
+    }
+  }
+}
+var mult = (function(){
+  var cache = {};
+  var calculate = function(){
+    var a = 1;
+    for(var i=0,len=arguments.length;i<len;i++){
+      a = a*arguments[i];
+    }
+    return a;
+  }
+  return function(){
+    var args = Array.prototype.join(arguments,',');
+    if(args in cache){
+      return cache[args];
+    }else{
+      return cache[args] = calculate(arguments);
+    }
+  }
+})();
 
-  return true;
-};
+var report = (function(){
+  var imgs = [];
+  return function(src){
+    var img = new Image();
+    imgs.push(img);
+    img.src=src;
+  }
+})();
+
+var throttle = function(fn,interval){
+  var _self = this,
+      timer,
+      firstTime = true;
+  return function(){
+    var args = arguments,
+        _me = this;
+    if(firstTime){
+      _self.apply(_me,args);
+      return firstTime = false;
+    }
+    if(timer){
+      return false;
+    }
+    timer = setTimeout(function(){
+      clearTimeout(timer);
+      timer = null;
+      _self.apply(_me,args);
+    }, interval||500)
+  }
+}
+
+var addEvent = function(elem,type,handler){
+  if(window.addEventListener){
+    addEvent = function(elem,type,handler){
+      return elem.addEventListener(type, handler, false);
+    }
+  }else if(window.attachEvent){
+    addEvent = function(elem,type,handler){
+      return elem.attachEvent('on'+type,handler)
+    }
+  }
+  addEvent(elem,type,handler);
+}
+
+var strategies = {
+  isNoEmpty:function(value,errMsg){
+    if(value === ''){
+      return errMsg;
+    }
+  },
+  minLength:function(value,length,errMsg){
+    if(value.length<length){
+      return errMsg;
+    }
+  },
+  isMobile:function(value,errMsg){
+    if ( !/(^1[3|5|8][0-9]{9}$)/.test( value ) ){
+      return errorMsg;
+    }
+  }
+}
+var validataFunc = function(){
+  var validator = new Validator();
+  validator.add(userName,'isNoEmpty','用户名不能为空');
+  validator.add(passWord,'minLength:6','密码长度不能少于 6 位');
+  validator.add(phoneNumber,'isMobile','手机号码格式不正确');
+  var errMsg = validator.start();
+  return errMsg;
+}
+form.onsubmit = function(){
+  var errMsg = validataFunc();
+  if(errMsg){
+    alert(errMsg);
+    return false;
+  }
+}
+
+var Validator = function(){
+  this.cache = [];
+}
+Validator.prototype.add = function(dom,rule,errMsg){
+  var ary = rule.split(':');
+  this.cache.push(function(){
+    var strategy = ary.shift();
+    ary.unshift(dom.value);
+    ary.push(errMsg);
+    return strategies
+  })
+}
+
+var each = function(ary,callback){
+  for(var i=0,l=ary.length;i<l;i++){
+    callback.call(ary[i],i,arr[i])
+  }
+}
+
+var event = {
+  clientList:[],
+  listen:function(key,fn){
+    if(!this.clientList[key]){
+      this.clientList[key] = []
+    }
+    this.clientList[key].push(fn)
+  },
+  trigger:function(){
+    var key = Array.prototype.shift.call(arguments),
+        fns = this.clientList[key];
+    if(!fns || fns.length===0){
+      return false;
+    }
+    for(var i=0,fn;fn = fns[i++];){
+      fn.apply(this.arguments)
+    }
+  }
+}
+var installEvent = function(obj){
+  for(var i in event){
+    obj[i] = event[i];
+  }
+}
+var mult = (function(){
+  var cache = {};
+  var calculate = function(){
+    var a = 1;
+    for(var i=0,l=arguments.length;i<l;i++){
+      a = a*arguments[i];
+    }
+    return a;
+  }
+  return function(){
+    var args = Array.prototype.join.call(arguments);
+    if(cache[args]){
+      return cache[args];
+    }else{
+      return cache[args] = calculate(arguments);
+    }
+  }
+})
