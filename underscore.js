@@ -91,6 +91,30 @@
       return func.apply(context,arguments)
     }
   }
+  var optimizeCb = function(func,context,argCount){
+    if(context == null)return func;
+    switch(argCount == null ? 3 : argCount){
+      case 1:
+        return function(value){
+          return func.call(context,value)
+        };
+      case 2:
+        return function(value,other){
+          return func.call(context,value,other)
+        };
+      case 3:
+        return function(value,index,collection){
+          return func.call(context,value,index,collection)
+        };
+      case 4:
+        return function(accumlator,value,index,collection){
+          return func.call(context,accumlator,value,index,collection)
+        };      
+    }
+    return function(){
+      return func.apply(context,arguments);
+    }
+  }
   //传入undefined和null时返回一个函数function(value){return value}
   var cb = function(value,context,argCount){
     if(value == null )return _.identity;
@@ -132,7 +156,23 @@
     } 
     */
   }
-
+  var cb = function(value,context,argCount){
+    if(value == null)return _.identity;
+    if(_.isFunction(value))return optimizeCb(value,context,argCount);
+    if(_.isObject(value))return _.matcher(value);
+    /* _.matcher = _.matches = function(attrs){
+      attrs = _.extendOwn({},attrs);
+      return function(obj){
+        return _.isMatch(obj,attrs);
+      }
+    } */
+    return property(value);
+    /* var property = _.property = function(key){
+      return function(obj){
+        return obj == null ? void 0 : obj[key];
+      }
+    } */
+  }
   _.iteratee = function(value, context) {
     return cb(value, context, Infinity);
   };
@@ -156,7 +196,24 @@
       return obj;
     }
   }
-
+  var createAssigner = function(keysFunc,undefinedOnly){
+    return function(obj){
+      var length = arguments.length;
+      if(length < 2 || obj == null)return obj;
+      for(var index = 1 ; index<length;index++){
+        var source = arguments[index];
+        var keys = keysFunc(source),
+            l = keys.length;
+        for(var i = 0;i<l;i++){
+          var key = keys[i];
+          if(!undefinedOnly && obj[key] === void 0){
+            obj[key] = source[key]
+          }
+        }    
+      }
+    }
+    return obj;
+  }
   var createAssigner = function(keysFunc,undefinedOnly){
     return function(obj){
       var length = arguments.length;
@@ -198,7 +255,14 @@
     Ctor.prototype = null;
     return result;
   }
-
+  var baseCreate = function(prototype){
+    if(!_.isObject(prototype))return {}; 
+    if(nativeCreate) return nativeCreate(prototype);
+    Ctor.prototype = prototype;
+    var result = new Ctor;
+    Ctor.prototype = null;
+    return result;
+  }
   //闭包，获取对象的值，如果对象中没有该key，则创建一个
   //值为undenfined
   var property = function(key) {
@@ -207,7 +271,7 @@
     }
   }
     //Math.pow(2, 53) - 1 是 JavaScript 中能精确表示的最大数字
-  var MAX_ARRAY_INDEX = Math.pow(2, 53) - 1;
+  var MAX_ARRAY_INDEX = Math.pow(2,53) - 1;
 
   //该函数传入一个对象参数，来获取对象参数的length值
   // 用来获取 array 以及 arrayLike 元素的 length 属性值
@@ -348,7 +412,17 @@
           values[i] = obj[keys[i]];
         }
         return values;
-    }*/
+    }
+    _.values = function(obj){
+      var keys = _.keys(obj);
+      var length = keys.length;
+      var values = [];
+      for(var i = 0;i<length;i++){
+        values[i] = obj[keys[i]];
+      }
+      return values;
+    }
+    */
     if(typeof fromIndex != 'number' || guard) fromIndex = 0;
     return _.indexOf(obj,item,fromIndex) >= 0;
   }
