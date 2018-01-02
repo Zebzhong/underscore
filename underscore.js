@@ -115,6 +115,30 @@
       return func.apply(context,arguments);
     }
   }
+  var optimizeCb = function(func,context,argCount){
+    if(context == null)return func;
+    switch(argCount== null ? 3 : argCount ){
+      case 1:
+        return function(value){
+          return func.call(context,value)
+        };
+      case 2:
+        return function(value,other){
+          return func.call(context,value,other)
+        }
+      case 3:
+        return function(value,index,collection){
+          return func.call(context,value,index,collection)
+        };
+      case 4:
+        return function(accumlator,value,index,collection){
+          return func.call(context,accumlator,value,index,collection)
+        };      
+    }
+    return function(){
+      return func.apply(context,arguments);
+    }
+  }
   //传入undefined和null时返回一个函数function(value){return value}
   var cb = function(value,context,argCount){
     if(value == null )return _.identity;
@@ -173,11 +197,33 @@
       }
     } */
   }
+  var cb = function(value,context,argCount){
+    if(value == null) return _.identity;
+    /* _.identity = function(value){
+      return value;
+    } */
+    if(_.isFunction(value))return optimizeCb(value,context,argCount);
+    if(_.isObject(value))return _.matcher(value);
+    // _.matcher = function(attrs){
+    //   attrs = _.extendOwn({},attrs);
+    //   return function(obj){
+    //     return _.isMatch(obj,attrs);
+    //   }
+    // }
+    return property(value);
+    /* var property = _.property = function(key){
+      return function(obj){
+        return obj == null ? void 0 : obj[key];
+      }
+    } */
+  }
   _.iteratee = function(value, context) {
     return cb(value, context, Infinity);
   };
 
-  
+  _.iteratee = function(value,context){
+    return cb(value,context,Infinity);
+  }
   var createAssigner = function (keysFunc,undefinedOnly) {
     return function(obj){
       var length = arguments.length;
@@ -232,6 +278,24 @@
       return obj;
     }
   }
+  var createAssigner = function(keysFunc,undefinedOnly){
+    return function(obj){
+      var length = arguments.length;
+      if(length < 2 || obj == null)return obj;
+      for(var index = 1;index<length;index++){
+        var source = arguments[index];
+        var keys = keysFunc(source),
+            l = keys.length;
+        for(var i = 0;i<l;i++){
+          var key = keys[i];
+          if(!undefinedOnly && obj[key] === void 0){
+            obj[key] = source[key];
+          }
+        }    
+      }
+      return obj;
+    }
+  }
   //传入一个原型，生成一个带有空对象的原型，用来实现继承
   var baseCreate = function(prototype) {
 
@@ -257,6 +321,14 @@
   }
   var baseCreate = function(prototype){
     if(!_.isObject(prototype))return {}; 
+    if(nativeCreate) return nativeCreate(prototype);
+    Ctor.prototype = prototype;
+    var result = new Ctor;
+    Ctor.prototype = null;
+    return result;
+  }
+  var baseCreate = function(prototype){
+    if(!_.isObject(prototype))return {};
     if(nativeCreate) return nativeCreate(prototype);
     Ctor.prototype = prototype;
     var result = new Ctor;
@@ -291,6 +363,14 @@
     var length = getLength(collection);
     return typeof length == 'number' && length >= 0 && length <= MAX_ARRAY_INDEX;
   }
+  var isArrayLike = function(collection){
+    var length = getLength('length');
+    return typeof length === 'number' && length >= 0 && length <= MAX_ARRAY_INDEX;
+  }
+  var isArrayLike = function(collection){
+    var length = getLength(collection);
+    return typeof length === 'number' && length >= 0 && length <= MAX_ARRAY_INDEX;
+  }
   _.each = _.forEach = function(obj,iteratee,context){
     iteratee = optimizeCb(iteratee,context);
     var i,length;
@@ -321,6 +401,38 @@
       }
     }
   }
+  _.each = _.forEach = function(obj,iteratee,context){
+    iteratee = optimizeCb(iteratee,context);
+    var i,length;
+    if(isArrayLike(obj)){
+      for(i = 0,length = obj.length;i<length;i++){
+        iteratee(obj[i],i,obj);
+      }
+    }else{
+      var keys = _.keys(obj),
+          length = keys.length;
+      for(i = 0;i<length;i++){
+        var key = keys[i];
+        iteratee(obj[key],key,obj);
+      }
+    }
+  }
+  _.each = _.forEach = function(obj,iteratee,context){
+    iteratee = optimizeCb(iteratee,context);
+    var i,length;
+    if(isArrayLike(obj)){
+      for(i = 0;i<length;i++){
+        iteratee(obj[i],i,obj);
+      }
+    }else{
+      var keys = _.keys(obj),
+          length = keys.length;
+      for(i=0;i<length;i++){
+        var key = keys[i];
+        iteratee(obj[key],key,obj);
+      }
+    }
+  }
   _.map = _.collect = function(obj, iteratee, context) {
     // 根据 context 确定不同的迭代函数
     iteratee = cb(iteratee, context);
@@ -346,6 +458,17 @@
     for(var index = 0;index<length;index++){
       var currentKey = keys ? keys[index] : index;
       results[index] = iteratee(obj[currentKey],currentKey,obj);
+    }
+    return results;
+  }
+  _.map = _.collect = function(obj,iteratee,context){
+    iteratee = cb(iteratee,context);
+    var keys = !isArrayLike(obj) && _.keys(obj),
+        length = (keys || obj).length,
+        results = [];
+    for(var i = 0;i<length;i++){
+      var currentKey = keys ? keys[i]:i;
+      results[i] = iteratee(obj[currentKey],currentKey,obj);
     }
     return results;
   }
@@ -1406,7 +1529,7 @@
     if (_.isFunction(func))
       throw new TypeError('Bind must be called on a function');
 
-    var args = slice(arguments, 2);
+    var args = slice.call(arguments, 2);
     var bound = function() {
       return executeBound(func, bound, context, this, args.concat(slice.call(arguments)));
     }
@@ -1414,6 +1537,20 @@
     return bound;
   }
 
+  _.bind = function(func,context){
+    if(nativeBind && func.bind === nativeBind)
+      return nativeBind.apply(func,slice(arguments,1));
+    if(!_isFunction(func))
+      throw new TypeError('Bind must be called on a function');
+    var args = slice.call(arguments,2);
+    var bound = function(){
+      return executeBound(func,bound,context,this,args.concat(slice.call(arguments)))
+    }
+    return bound;
+  }
+  executeBound = function(){
+    
+  }
   _.partial = function() {
     // 如果传入的是 _，则这个位置的参数暂时空着，等待手动填入
     var boundArgs = slice.call(arguments, 1)
