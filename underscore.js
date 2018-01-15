@@ -412,6 +412,24 @@
       return obj;
     }
   }
+  var createAssigner = function(keysFunc,undefinedOnly){
+    return function(obj){
+      var length = arguments.length;
+      if(length < 2 && obj == null) return obj;
+      for(var index = 1;index < length;index++){
+        var keys = keysFunc(obj),
+            source = arguments[index],
+            l = keys.length;
+        for(var i = 0;i<l;i++){
+          var key = keys[i];
+          if(!undefinedOnly && obj[key] === void 0){
+            obj[key] = source[key];
+          }
+        }
+      }
+      return obj;
+    }
+  }
   //传入一个原型，生成一个带有空对象的原型，用来实现继承
   var baseCreate = function(prototype) {
 
@@ -590,6 +608,38 @@
       }
     }
   }
+  _.each = _.forEach = function(obj,iteratee,context){
+    iteratee = optimizeCb(iteratee);
+    var i,length;
+    if(isArrayLike(obj)){
+      for(i = 0,length = obj.length;i<length;i++){
+        iteratee(obj[i],i,obj)
+      }
+    }else{
+      var keys = _.keys(obj),
+          length = keys.lenght;
+      for(i = 0;i<length;i++){
+        var key = keys[i];
+        iteratee(obj[key],key,obj);
+      }
+    }
+  }
+  _.each = _.forEach = function(obj,iteratee,context){
+    iteratee = optimizeCb(iteratee,context);
+    var i,length;
+    if(isArrayLike(obj)){
+      for(i = 0,length = obj.length;i<length;i++){
+        iteratee(obj[i],i,obj)
+      }
+    }else{
+      var keys = _.keys(obj),
+          length = keys.length;
+      for(i = 0;i<length;i++){
+        var key = keys[i];
+        iteratee(obj[key],key,obj);
+      }
+    }
+  }
   _.map = _.collect = function(obj, iteratee, context) {
     // 根据 context 确定不同的迭代函数
     iteratee = cb(iteratee, context);
@@ -640,6 +690,28 @@
     }
     return results;
   }
+  _.map = _.collect = function(obj,iteratee,context){
+    iteratee = cb(iteratee,context);
+    var keys = !isArrayLike(obj) && _.keys(obj),
+        length = (keys || obj).length,
+        results = [];
+    for(var i = 0;i<length;i++){
+      var currentKey = keys ? keys[i]:i;
+      results = iteratee(obj[currentKey],currentKey,obj);
+    }
+    return results;
+  }
+  _.map = _.collect = function(obj,iteratee,context){
+    iteratee = cb(iteratee,context);
+    var keys = !isArrayLike(obj) && _.keys(obj),
+        length = (keys || obj).length,
+        results = [];
+    for(var i = 0;i<length;i++){
+      var currentKey = keys ? keys[i] : i;
+      results[i] = iteratee(obj[currentKey],currentKey,obj);
+    }    
+    return results;
+  }
   function createReduce(dir) {
     function iterator(obj, iteratee, memo, keys, index, length) {
       for (; index >= 0 && index < length; index += dir) {
@@ -678,6 +750,46 @@
           index += dir;
         }
         return iterator(obj,iteratee,memo,keys,index,length)
+    }
+  }
+  function createReduce(dir){
+    function iterator(obj,iteratee,memo,keys,index,length){
+      for(;index >= 0 && index < length;index+=dir){
+        var currentKey = keys ? keys[index] : index;
+        memo = iteratee(memo,obj[currentKey],currentKey,obj);
+        return memo;
+      }
+    }
+    return function(obj,iteratee,memo,context){
+      iteratee = optimizeCb(iteratee,context,4);
+      var keys = !isArrayLike(obj) && _.keys(obj),
+          length = (keys || obj).length,
+          index = dir > 0 ? 0 : length - 1;
+      if(arguments.length < 3){
+        memo = obj[keys ?　keys[index] : index];
+        index += dir;
+      }
+      return iterator(obj,iteratee,memo,keys,index,length)
+    }
+  }
+  function createReduce(dir){
+    function iterator(obj,iteratee,memo,keys,index,length){
+      for(;index >=0 && index <= length;index += dir){
+        var currentKey = keys ? keys[index] : index;
+        memo = iteratee(obj[currentKey],currentKey,obj);
+        return memo;
+      }
+    }
+    return function(obj,iteratee,memo,context){
+      iteratee = optimizeCb(iteratee,context,4);
+      var keys = !isArrayLike(obj) && _.keys(obj),
+          length = (keys || obj).length,
+          index = dir > 0 ? 0 : length -1;
+      if(arguments.length < 3){
+        memo = obj[keys ? keys[index]:index];
+        index += dir;
+      }
+      return iterator(obj,iteratee,memo,keys,index,length);
     }
   }
   _.contains = _.includes = _.include = function(obj, item, fromIndex, guard) {
@@ -847,7 +959,7 @@
       iteratee = cb(iteratee,context);
       _.each(obj,function(value,index,list){
         computed = iteratee(value,index,list);
-        if(computed < lastComputed computed === Infinity && result === Infinity){
+        if(computed < lastComputed.computed === Infinity && result === Infinity){
           result = value;
           lastComputed = computed;
         }
@@ -855,7 +967,6 @@
     }
     return result;
   }
-
   _.shuffle = function(obj){
     var set = isArrayLike(obj) ? obj : _.values(obj);
     var length = set.length;
@@ -882,7 +993,6 @@
     }
     return _.shuffle(obj).slice(0,Math.max(0,n));
   }
-  *********
   _.sortBy = function(obj,iteratee,context){
     iteratee = cb(iteratee,context);
     // _.pluck(list, propertyName)
@@ -976,7 +1086,7 @@
     // 函数的扩展方法
     // 共 14 个扩展方法
   var executeBound = function(sourceFunc,boundFunc,context,callingContext,args){
-    if(!callingContext instanceof boundFunc){
+    if(!(callingContext instanceof boundFunc)){
       return sourceFunc.apply(context,args);
     }
     var self = baseCreate(sourceFunc.prototype);
@@ -987,7 +1097,7 @@
     return self;
   }
 
-  var _.bind = function(func,context){
+  _.bind = function(func,context){
     if(nativeBind && func.bind === nativeBind){
       return nativeBind.apply(func,slice.call(arguments,1))
     }
@@ -999,7 +1109,29 @@
     }
     return bound;
   }
-
+  var executeBound = function(sourceFunc,boundFunc,context,callingContext,args){
+    if(!(callingContext instanceof boundFunc)){
+      return sourceFunc.apply(context,args);
+    }
+    var self = baseCreate(sourceFunc.prototype);
+    var result = sourceFunc.apply(self,args);
+    if(_.isObject(result)){
+      return result;
+    }
+    return self;
+  }
+  _.bind = function(func,context){
+    if(nativeBind && func.bind === nativeBind){
+      return nativeBind.apply(func,slice.call(arguments,1));
+    }
+    if(!_.isFunction(func))
+      throw new TypeError('Bind must be called on a function');
+    var args = slice.call(arguments,2);
+    var bound = function(){
+      return executeBound(func,bound,context,this,args.concat(slice.call(arguments)))
+    }  
+    return bound;
+  }
   _.memoize = function(func,hasher){
     var memoize = function(key){
       var cache = memoize.cache;
@@ -1662,7 +1794,58 @@
   _.compact = function(array) {
     return _.filter(array, _.identity);
   };
-
+  // Generator function to create the indexOf and lastIndexOf functions
+  // _.indexOf = createIndexFinder(1, _.findIndex, _.sortedIndex);
+  // _.lastIndexOf = createIndexFinder(-1, _.findLastIndex);
+  function createIndexFinder(dir, predicateFind, sortedIndex) {
+    // API 调用形式
+    // _.indexOf(array, value, [isSorted])
+    // _.indexOf(array, value, [fromIndex])
+    // _.lastIndexOf(array, value, [fromIndex])
+    return function(array, item, idx) {
+      var i = 0,
+          length = getLength(array);
+        // 如果 idx 为 Number 类型
+        // 则规定查找位置的起始点
+        // 那么第三个参数不是 [isSorted]
+        // 所以不能用二分查找优化了
+        // 只能遍历查找
+        if (typeof idx == 'number') {
+          if (dir > 0) { // 正向查找
+            // 重置查找的起始位置
+            i = idx >= 0 ? idx : Math.max(idx + length, i);
+          } else { // 反向查找
+            // 如果是反向查找，重置 length 属性值
+            length = idx >= 0 ? Math.min(idx + 1, length) : idx + length + 1;
+          }
+        } else if (sortedIndex && idx && length) {
+          // 能用二分查找加速的条件
+          // 有序 & idx !== 0 && length !== 0
+          // 用 _.sortIndex 找到有序数组中 item 正好插入的位置
+          idx = sortedIndex(array, item);
+          // 如果正好插入的位置的值和 item 刚好相等
+          // 说明该位置就是 item 第一次出现的位置
+          // 返回下标
+          // 否则即是没找到，返回 -1
+          return array[idx] === item ? idx : -1;
+        }
+        // 特判，如果要查找的元素是 NaN 类型
+        // 如果 item !== item
+        // 那么 item => NaN
+        if (item !== item) {
+          idx = predicateFind(slice.call(array, i, length), _.isNaN);
+          return idx >= 0 ? idx + i : -1;
+        }
+        // O(n) 遍历数组
+        // 寻找和 item 相同的元素
+        // 特判排除了 item 为 NaN 的情况
+        // 可以放心地用 `===` 来判断是否相等了
+        for (idx = dir > 0 ? i : length - 1; idx >= 0 && idx < length; idx += dir) {
+          if (array[idx] === item) return idx;
+        }
+        return -1;
+      };
+    }
   // 函数的扩展方法
   // 共 14 个扩展方法
 
