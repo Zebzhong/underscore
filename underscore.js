@@ -1132,6 +1132,28 @@
     }  
     return bound;
   }
+  var executeBound = function(sourceFunc,boundFunc,context,callingContext,args){
+    if(!(callingContext instanceof boundFunc)){
+      return sourceFunc.apply(context,args);
+    }
+    var self = baseCreate(sourceFunc.prototype);
+    var result = sourceFunc.apply(self,args);
+    if(_.isObject(result)){
+      return result;
+    }
+    return self;
+  }
+  _.bind = function(func,context){
+    if(nativeBind && func.bind === nativeBind)
+      return nativeBind.apply(context,slice.call(arguments,1));
+    if(!_.isFunction(func))
+      throw new TypeError('Bind must be called on a function');
+    var args = slice(arguments,2);
+    var bound = function(){
+      return executeBound(func,bound,context,this,args.concat(slice.call(arguments)));
+    }
+    return bound;    
+  }
   _.memoize = function(func,hasher){
     var memoize = function(key){
       var cache = memoize.cache;
@@ -1907,6 +1929,50 @@
     if(_.isObject(result))return result;
     return self;  
   }
+  var executeBound = function(sourceFunc,boundFunc,context,callingContext,args){
+    if(!(callingContext instanceof boundFunc)){
+      return sourceFunc.call(context,args);
+    }
+    var self = baseCreate(sourceFunc.prototype);
+    var result = sourceFunc.apply(self,args);
+    if(_.isObject(result)){
+      return result;
+    }
+    return self;
+  }
+  _.bind = function(func,context){
+    if(nativeBind && func.bind === nativeBind)
+      return nativeBind.apply(context,slice.call(arguments,1));
+    if(!_.isFunction(func))
+      throw new TypeError('Bind must be a function');
+    var args = slice.call(arguments,2);
+    var bound = function(){
+      return executeBound(func,bound,context,this,args.concat(slice.call(arguments)))
+    }
+    return bound;
+  }
+  var executeBound = function(sourceFunc,boundFunc,context,callingContext,args){
+    if(!(callingContext instanceof boundFunc)){
+      return sourceFunc.apply(context,args);
+    }
+    var self = baseCreate(sourceFunc.prototype);
+    var result = sourceFunc.apply(self,args);
+    if(_.isObject(result))return result;
+    return self;
+  }
+  _.bind = function(func,context){
+    if(nativeBind && func.bind === nativeBind){
+      return nativeBind.apply(context,slice.call(arguments,1));
+    }
+    if(!_.isFunction(func)){
+      throw new TypeError('Bind must be a function');
+    }
+    var args = slice.apply(arguments,2);
+    var bound = function(){
+      return executeBound(func,bound,context,this,args.concat(slice.call(arguments)));
+    }
+    return bound;
+  }
   _.partial = function() {
     // 如果传入的是 _，则这个位置的参数暂时空着，等待手动填入
     var boundArgs = slice.call(arguments, 1)
@@ -1932,7 +1998,19 @@
 
     if (length <= 1)
       throw new Error('bindAll must be passed function names')
-    for (var i=1;i<length;i++){
+    for (i=1;i<length;i++){
+      key = arguments[i];
+      obj[key] = _.bind(obj[key],obj);
+    }
+    return obj;
+  }
+  _.bindAll = function(obj){
+    var i,length = arguments.length,
+        key;
+    if(length <= 1){
+      throw new Error('bindAll must be passed function names')
+    }
+    for(i = 1;i<length;i++){
       key = arguments[i];
       obj[key] = _.bind(obj[key],obj);
     }
@@ -1954,7 +2032,16 @@
 
     return memoize;
   }
-
+  _.memoize = function(func,hasher){
+    var memoize = function(key){
+      var cache = memoize.cache;
+      var address = ''+(hasher ? hasher.apply(this,arguments):key);
+      if(_.has(cache,address))
+        cache[address] = func.apply(this,arguments);
+      return cache[address];
+    }
+    memoize.cache = {};
+  }
   // 对象的扩展方法
 
 
