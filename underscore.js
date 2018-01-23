@@ -205,6 +205,26 @@
     */
   }
   var cb = function(value,context,argCount){
+    if(value == null) return _.identity(value);
+    /* _.identity = function(value){
+      return value;
+    } */
+    if(_.isFunction)return optimizeCb(value,context,argCount);
+    if(_.isObject)return _.matcher(value);
+    /* _.matcher =  _.matches = function(attrs){
+      attrs = _.extendOwn({},attrs);
+      return function(obj){
+        return _.isMatch(obj,attrs);
+      }
+    } */
+    return property(value);
+    /* var property = _.property = function(key){
+      return function(obj){
+        return obj == null ? void 0 : obj[key];
+      }
+    }  */
+  }
+  var cb = function(value,context,argCount){
     if(value == null)return _.identity;
     if(_.isFunction(value))return optimizeCb(value,context,argCount);
     if(_.isObject(value))return _.matcher(value);
@@ -296,7 +316,7 @@
             l = keys.length;
         for(var i = 0;i<l;i++){
           var key = keys[i];
-          if(!undefinedOnly && obj[key] === void 0){
+          if(!undefinedOnly || obj[key] === void 0){
             obj[key] = source[key]
           }
         }    
@@ -314,7 +334,7 @@
             l = keys.length;
         for(var i = 0;i<l;i++){
           var key = keys[i];
-          if(!undefinedOnly && obj[key] === void 0){
+          if(!undefinedOnly || obj[key] === void 0){
             obj[key] = source[key];
           }
         }    
@@ -332,7 +352,7 @@
             l = keys.length;
         for(var i = 0;i<l;i++){
           var key = keys[i];
-          if(!undefinedOnly && obj[key] === void 0){
+          if(!undefinedOnly || obj[key] === void 0){
             obj[key] = source[key];
           }
         }    
@@ -350,7 +370,7 @@
             l = keys.length;
         for(var i = 0;i<l;i++){
           var key = keys[i];
-          if(!undefinedOnly && obj[key] === void 0){
+          if(!undefinedOnly || obj[key] === void 0){
             obj[key] = source[key];
           }
         }
@@ -368,7 +388,7 @@
             l = keys.length;
         for(var i = 0;i<l;i++){
           var key = keys[i];
-          if(!undefinedOnly && obj[key] === void 0){
+          if(!undefinedOnly || obj[key] === void 0){
             obj[key] = source[key];
           }
         }
@@ -386,7 +406,7 @@
             l = keys.length;
         for(var i = 0;i<l;i++){
           var key = keys[i];
-          if(!undefinedOnly && obj[key] === void 0){
+          if(!undefinedOnly || obj[key] === void 0){
             obj[key] = source[key];
           }
         }
@@ -404,7 +424,7 @@
             l = keys.length;
         for(var i = 0;i<l;i++){
           var key = keys[i];
-          if(!undefinedOnly && obj[key] === void 0){
+          if(!undefinedOnly || obj[key] === void 0){
             obj[key] = source[key];
           }
         }
@@ -422,7 +442,43 @@
             l = keys.length;
         for(var i = 0;i<l;i++){
           var key = keys[i];
-          if(!undefinedOnly && obj[key] === void 0){
+          if(!undefinedOnly || obj[key] === void 0){
+            obj[key] = source[key];
+          }
+        }
+      }
+      return obj;
+    }
+  }
+  var createAssigner = function(keysFunc,undefinedOnly){
+    return function(obj){
+      var length = arguments.length;
+      if(length < 2 || obj == null)return obj;
+      for(var index = 1;index < length;index++){
+        var source = arguments[index];
+        var keys = keysFunc(source),
+          l = keys.length;
+        for(var i = 0;i<l;i++){
+          var key = keys[i];
+          if(!undefinedOnly || obj[key] === void 0 ){
+            obj[key] = source[key];
+          }
+        }
+      }
+      return obj;
+    }
+  }
+  var createAssigner = function(keysFunc,undefinedOnly){
+    return function(obj){
+      var length = arguments.length;
+      if(length < 2 || obj == null)return obj;
+      for(var index = 1;index < length;index++){
+        var source = arguments[index],
+            keys = keysFunc(source),
+            l = keys.length;
+        for(var i = 0;i<l;i++){
+          var key = keys[i];
+          if( !undefinedOnly || obj[key] === void 0){
             obj[key] = source[key];
           }
         }
@@ -480,6 +536,14 @@
   var baseCreate = function(prototype){
     if(!_.isObject(prototype))return {};
     if(nativeCreate) return nativeCreate(prototype);
+    Ctor.prototype = prototype;
+    var result = new Ctor;
+    Ctor.prototype = null;
+    return result;
+  }
+  var baseCreate = function(prototype){
+    if(!_.isObject(prototype))return {};
+    if(nativeCreate)return nativeCreate(prototype);
     Ctor.prototype = prototype;
     var result = new Ctor;
     Ctor.prototype = null;
@@ -1318,7 +1382,7 @@
     for (var index = 0; index < length; index++) {
       currentKey = keys[index];
 
-      results[currentKey] = iteratee(obj[currentKey], , currentKey, obj);
+      results[currentKey] = iteratee(obj[currentKey],currentKey, obj);
     }
     return results;
   }
