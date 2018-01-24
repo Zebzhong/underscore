@@ -486,6 +486,24 @@
       return obj;
     }
   }
+  var createAssigner = function(keyFunc,undefinedOnly){
+    return function(obj){
+      var length = arguments.length;
+      if( length < 2 || obj == null ) return obj;
+      for(var index = 1;index < length;index++){
+        var source = arguments[index],
+            keys = keysFunc(source),
+            l = keys.length;
+        for(var i = 0;i<l;i++){
+          var key = keys[i];
+          if(!undefinedOnly || obj[key] === void 0){
+            obj[key] = source[key];
+          }
+        }    
+      }
+      return obj;
+    }
+  }
   //传入一个原型，生成一个带有空对象的原型，用来实现继承
   var baseCreate = function(prototype) {
 
@@ -496,6 +514,14 @@
 
     //模拟Object.create函数，生成一个具有的继承父亲prototype的空对象
     //可以用来实现继承
+    Ctor.prototype = prototype;
+    var result = new Ctor;
+    Ctor.prototype = null;
+    return result;
+  }
+  var baseCreate = function(prototype){
+    if(!_.isObject(prototype))return obj;
+    if(nativeCreate) return nativeCreate(prototype);
     Ctor.prototype = prototype;
     var result = new Ctor;
     Ctor.prototype = null;
@@ -566,6 +592,11 @@
       return obj == null ? void 0 : obj[key];
     }
   }
+  var property = function(key){
+    return function(obj){
+      return obj == null ? void 0 : obj[key];
+    }
+  }
     //Math.pow(2, 53) - 1 是 JavaScript 中能精确表示的最大数字
   var MAX_ARRAY_INDEX = Math.pow(2,53) - 1;
 
@@ -595,6 +626,10 @@
     var length = getLength(collection);
     return typeof length === 'number' && length >= 0 && length <= MAX_ARRAY_INDEX;
   }
+  var isArrayLike = function(collection){
+    var length = getLength(collection);
+    return typeof length === 'number' && length >= 0 && length <= MAX_ARRAY_INDEX;
+  }
   _.each = _.forEach = function(obj,iteratee,context){
     iteratee = optimizeCb(iteratee,context);
     var i,length;
@@ -609,6 +644,21 @@
       }
     }
     return obj;
+  }
+  _.each = _.forEach = function(obj,iteratee,context){
+    iteratee = optimizeCb(iteratee,context);
+    var i,length;
+    if(isArrayLike(obj)){
+      for(i = 0,length = obj.length;i<length;i++){
+        iteratee(obj[i],i,obj);
+      }
+    }else{
+      var keys = _.keys(obj);
+      for(i = 0,length = keys.length;i<length;i++){
+        var key = keys[i];
+        iteratee(obj[key],key,obj);
+      }
+    }
   }
   _.each = _.forEach = function(obj,iteratee,context){
     iteratee = optimizeCb(iteratee,context);
@@ -681,7 +731,7 @@
       }
     }else{
       var keys = _.keys(obj),
-          length = keys.lenght;
+          length = keys.length;
       for(i = 0;i<length;i++){
         var key = keys[i];
         iteratee(obj[key],key,obj);
@@ -729,6 +779,17 @@
     for(var index = 0;index<length;index++){
       var currentKey = keys ? keys[index] : index;
       results[index] = iteratee(obj[currentKey],currentKey,obj);
+    }
+    return results;
+  }
+  _.map = _.collect = function(obj,iteratee,context){
+    iteratee = cb(iteratee,context);
+    var keys = !isArrayLike(obj) || _.keys(obj),
+        length = (keys || obj).length,
+        results;
+    for(var i = 0;i<length;i++){
+      var currentKey = keys ? obj[key] : i;
+      results[i] = iteratee(obj[currentKey],currentKey,obj);
     }
     return results;
   }
@@ -1218,6 +1279,23 @@
     }
     return bound;    
   }
+  var executeBound = function(sourceFunc,boundFunc,context,callingContext,args){
+    if(!(callingContext instanceof boundFunc))
+      return sourceFunc.apply(context,args);
+    var self = baseCreate(sourceFunc.prototype);
+    var result = sourceFunc.call(self,)  
+  }
+  _.bind = function(func,context){
+    if(nativeBind && func.bind === nativeBind)
+      return nativeBind.call(func,slice.call(arguments,1));
+    if(!_.isFunction(func))
+      throw new TypeError('Bind must be called on a function');
+    var args = slice.call(arguments,2);
+    var bound = function(){
+      return executeBound(func,bound,context,this,args.concat(slice.call(arguments)));
+    }
+    return bound;
+  }
   _.memoize = function(func,hasher){
     var memoize = function(key){
       var cache = memoize.cache;
@@ -1230,7 +1308,17 @@
     memoize.cache = {};
     return memoize;
   }
-
+  _.memoize = function(func,hasher){
+    var memoize = function(key){
+      var cache = memoize.cache;
+      var address = ''+(hasher ? hasher.apply(this,arguments):key);
+      if(!_.has(cache,address)){
+        cache[address] = func.apply(this,arguments);
+      }
+    }
+    memoize.cache = {};
+    return memoize;
+  }
   _.delay = function(func,wait){
     var args = slice.call(arguments,2);
     return setTimeout(function(){
@@ -1273,7 +1361,7 @@
   // 传入数组作为参数，能直接改变数组的值
   function collectNonEnumProps(obj, keys) {
     var nonEnumIdx = nonEnumerableProps.length;
-    var constructor = object.constructor;
+    var constructor = obj.constructor;
 
     //获取对象的原型
     //如果constructor被重写，则proto变为Object.proptotype
@@ -1335,6 +1423,16 @@
     return keys;
   }
 
+  _.keys = function(obj){
+    if(!_.isObject(obj))return [];
+    if(nativeKeys)return nativeKeys(obj);
+    var keys = [];
+    for(var key in obj){
+      if(_.has(obj,key))keys.push(key);
+    }
+    if(hasEnumBug) collectNonEnumProps(obj,keys);
+    return keys;
+  }
 
   //返回一个对象的所有属性,还包括原型链上继承上的属性
   //返回的是一个数组类型
@@ -1356,6 +1454,12 @@
     for(var key in obj) keys.push(key);
     if(hasEnumBug)collectNonEnumProps(obj,keys);
   }
+  _.allKeys = function(obj){
+    if(!_.isObject(obj))return [];
+    var keys = [];
+    for(var key in obj)keys.push(key);
+    if(hasEnumBug)collectNonEnumProps(obj,keys);
+  }
     // 将一个对象的所有 values 值放入数组中
     // 仅限 own properties 上的 values
   _.values = function(obj) {
@@ -1367,7 +1471,15 @@
     }
     return values;
   }
-
+  _.values = function(obj){
+    var keys = _.keys(obj);
+    var lenght = keys.length;
+    var values = Array(length);
+    for(var i = 0;i<length;i++){
+      values[i] = obj[keys[i]];
+    }
+    return values;
+  }
   _.mapObject = function(obj, iteratee, context) {
     //迭代函数
     //对每个键值对进行迭代
@@ -1387,6 +1499,19 @@
     return results;
   }
 
+  _.mapObject = function(obj,iteratee,context){
+    iteratee = cb(iteratee,context);
+    var keys = _.keys(obj),
+        length = keys.length,
+        results = {},
+        currentKey;
+    for(var i = 0;i < length;i++){
+      currentKey = keys[i];
+      results[currentKey] = iteratee(obj[currentKey],currentKey,obj);
+    }
+    return results;
+  }
+
   //2017/09/10
   //将一个对象转化为成员是参数对象自身的（不含继承的）所有可遍历（enumerable）属性的键值对数组。
   //相当于ES6中的Object.entries方法
@@ -1399,7 +1524,15 @@
     }
     return pairs;
   }
-
+  _.pairs = function(obj){
+    var keys = _.keys(obj);
+    var length = keys.length;
+    var pairs = Array(length);
+    for(var i = 0;i<length;i++){
+      pairs[i] = [keys[i],obj[keys[i]]];
+    }
+    return pairs;
+  }
   //将一个对象的Key-value的键值颠倒
   //注意：如果原来对象的value值重复，则后来的会覆盖前面的
   _.invert = function(obj) {
@@ -1410,7 +1543,14 @@
     }
     return result;
   }
-
+  _.invert = function(obj){
+    var result = {};
+    var keys = _.keys(obj);
+    for(var i = 0,length = keys.length;i<length;i++){
+      result[obj[keys[i]]] = keys[i];
+    }
+    return result;
+  }
   // 传入一个对象
   // 遍历该对象的键值对（包括 own properties 以及 原型链上的）
   // 如果某个 value 的类型是方法（function），则将该 key 存入数组
@@ -1422,14 +1562,22 @@
     }
     return names.sort();
   }
-
+  _.functions = _.methods = function(obj){
+    var names = [];
+    for(var key in obj){
+      if(_.isFunction(obj[key])) names.push(key);
+    }
+    return names.sort();
+  }
   //将几个对象进行融合，相当于es6的Object.assign()方法
   //但是将继承的方法也融合
   _.extends = createAssigner(_.allkeys);
 
+  _.extends = createAssigner(_.allKeys);
   //与上面的方法一致，区别是只会融合own properties的键值对
   _.extendOwn = _.assign = createAssigner(_.keys);
 
+  _.extendOwn = _.assign = createAssigner(_.keys);
   // 和 _.extend 非常类似
   // 区别是如果 *defaults 中出现了和 object 中一样的键
   // 则不覆盖 object 的键值对
@@ -1438,6 +1586,7 @@
   // 参数个数 >= 1
   _.defaults = createAssigner(_.allKeys, true);
 
+  _.defaults = createAssigner(_.allKeys,true);
   // 跟数组方法的 _.findIndex 类似
   // 找到对象的键值对中第一个满足条件的键值对
   // 并返回该键值对 key 值
@@ -1832,6 +1981,9 @@
     return obj != null && hasOwnProperty.call(obj, key);
   }
 
+  _.has = function(obj,key){
+    return obj != null && hasOwnProperty.call(obj,key);
+  }
   // 数组的扩展方法
   // 共 20 个扩展方法
   _.first = _.head = _.take = function(array, n, guard) {
@@ -2115,7 +2267,7 @@
 
 
 
-===============================
+/*=============================================================================================*/
 var mult = (function(){
   var cache = {};
   var calculate = function(){
