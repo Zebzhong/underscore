@@ -177,6 +177,24 @@
       return obj;
     }
   }
+
+  var createAssigner = function(keysFunc,undefinedOnly){
+    return function(obj){
+      var length = arguments.length;
+      if(length < 2 || obj == null)return obj;
+      for(var index = 1;index<length;index++){
+        var source = arguments[index];
+        var keys = _.keys(source),
+            l = keys.length;
+        for(var i = 0;i<l;i++){
+          var key = keys[i];
+          if(!undefinedOnly || obj[key] === void 0)
+            obj[key] = source[key];
+        }
+      }
+      return obj;
+    }
+  }
   // An internal function for creating a new object that inherits from another.
   var baseCreate = function (prototype) {
     if (!_.isObject(prototype)) 
@@ -189,6 +207,14 @@
     return result;
   };
 
+  var baseCreate = function(prototype){
+    if(!_.isObject(prototype))return {};
+    if(nativeCreate)return nativeCreate(prototype);
+    Ctor.prototype = prototype;
+    var result = new Ctor;
+    Ctor.prototype = null;
+    return result;
+  }
   var baseCreate = function(prototype){
     if(!_.isObject(prototype))return {};
     if(nativeCreate) return nativeCreate(prototype);
@@ -208,6 +234,9 @@
     return function(obj){
       return obj == null ? void 0 : obj[key];
     }
+  }
+  var property = function(key){
+    return obj == null ? void 0 : obj[key];
   }
   // Helper for collection methods to determine whether a collection should be
   // iterated as an array or as an object Related:
