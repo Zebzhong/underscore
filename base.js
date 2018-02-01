@@ -104,6 +104,30 @@
       return func.apply(context,arguments);
     }
   }
+  var optimizeCb = function(func,context,argCount){
+    if(context === void 0)return func;
+    switch(argCount ? argCount : 3){
+      case 1:
+        return function(value){
+          return func.call(context,value);
+        }
+      case 2:
+        return function(value,other){
+          return func.call(context,value,other);
+        }
+      case 3:
+        return function(value,index,collection){
+          return func.call(context,value,index,collection);
+        }
+      case 4:
+        return function(accumulator,value,index,collection){
+          return func.call(context,accumulator,value,index,collection);
+        }
+    }
+    return function(){
+      return func.apply(context,arguments);
+    }
+  }
   // A mostly-internal function to generate callbacks that can be applied to each
   // element in a collection, returning the desired result — either identity, an
   // arbitrary callback, a property matcher, or a property accessor.
@@ -138,6 +162,18 @@
         return obj == null ? void 0 : obj[key];
       }
     } */
+  }
+  var cb = function(value,context,argCount){
+    if(value == null ) return _.identity(value);
+    if(_.isFunction(value))return optimizeCb(value,context,argCount);
+    if(_.isObject(value))return _.matcher(value);
+    /* _.matcher = function(attrs){
+      attrs = _.extendOwn({},attrs);
+      return function(obj){
+        return _.isMatch(obj,attrs);
+      }
+    } */
+    return _.property(value)
   }
   // An internal function for creating assigner functions.
   var createAssigner = function (keysFunc, undefinedOnly) {
@@ -195,6 +231,42 @@
       return obj;
     }
   }
+  var createAssigner = function(keysFunc,undefinedOnly){
+    return function(obj){
+      var length = arguments.length;
+      if(length < 2 || obj == null)return obj;
+      for(var index = 1;index<length;index++){
+        var source = arguments[index],
+            keys = _.keys(source),
+            l = keys.length;
+        for(var i = 0;i<l;i++){
+          var key = keys[i];
+          if(!undefinedOnly && obj[key] === void 0){
+            obj[key] = source[key];
+          }
+        }
+      }
+      return obj;
+    }
+  }
+  var createAssigner = function(keysFunc,undefinedOnly){
+    return function(obj){
+      var length = arguments.length;
+      if(length < 2 || obj == null)return obj;
+      for(var index = 1;index<length;index++){
+        var source = arguments[index],
+            keys = _.keys(obj),
+            l = keys.length;
+        for(var i = 0;i<l;i++){
+          var key = keys[i];
+          if(!undefinedOnly && obj[key] === void 0){
+            obj[key] = source[key];
+          }
+        }
+      }
+      return obj;
+    }
+  }
   // An internal function for creating a new object that inherits from another.
   var baseCreate = function (prototype) {
     if (!_.isObject(prototype)) 
@@ -223,6 +295,22 @@
     Ctor.prototype = null;
     return result;
   }
+  var baseCreate = function(prototype){
+    if(!_.isObject(prototype))return {};
+    if(nativeCreate)return nativeCreate(prototype);
+    Ctor.prototype = prototype;
+    var result = new Ctor;
+    Ctor.prototype = null;
+    return result;
+  }
+  var baseCreate = function(prototype){
+    if(!_.isObject(prototype))return {};
+    if(nativeCreate)nativeCreate(prototype);
+    Ctor.prototype = prototype;
+    var result = new Ctor;
+    Ctor.prototype = null;
+    return result;
+  }
   var property = function (key) {
     return function (obj) {
       return obj == null
@@ -234,6 +322,9 @@
     return function(obj){
       return obj == null ? void 0 : obj[key];
     }
+  }
+  var property = function(key){
+    return obj == null ? void 0 : obj[key];
   }
   var property = function(key){
     return obj == null ? void 0 : obj[key];

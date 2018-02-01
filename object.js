@@ -35,7 +35,16 @@ _.keys = function(obj){
   if(hasEnumBug)collectNonEnumProps(obj,keys);
   return keys;
 }
-
+_.keys = function(obj){
+  if(!_.isObject(obj))return [];
+  if(nativeKeys)return nativeKeys(obj);
+  var keys = [];
+  for(var key in obj){
+    if(_.has(obj,key))keys.push(key);
+  }
+  if(hasEnumBug)collectNonEnumProps(obj,keys);
+  return keys;
+}
 _.keys = function(obj){
   if(!_.isObject(obj))return [];
   if(nativeKeys)return nativeKeys(obj);
@@ -85,6 +94,15 @@ _.allKeys = function(obj){
   if(hasEnumBug)collectNonEnumProps(obj,keys);
   return keys;
 }
+_.allKeys = function(obj){
+  if(!_.isObject(obj))return [];
+  var keys = [];
+  for(var key in obj){
+    keys.push(key);
+  }
+  if(hasEnumBug)collectNonEnumProps(obj,keys);
+  return keys;
+}
 _.values = function(obj){
   var keys = _.keys(obj);
   var length = keys.length;
@@ -94,7 +112,15 @@ _.values = function(obj){
   }   
   return values; 
 }
-
+_.values = function(obj){
+  var keys = _.keys(obj);
+  var length = keys.length;
+  var values = Array(length);
+  for(var i = 0;i<length;i++){
+    values[i] = obj[keys[i]];
+  }
+  return values;
+}
 _.values = function(obj){
   var keys = _.keys(obj);
   var length = keys.length;
@@ -125,7 +151,18 @@ _.mapObject = function(obj,iteratee,context){
   }
   return results;
 }
-
+_.mapObject = function(obj,iteratee,context){
+  iteratee = cb(iteratee,context);
+  var keys = _.keys(obj),
+      length = keys.length,
+      results = {},
+      currentKey;
+  for(var i = 0;i<length;i++){
+    currentKey = keys[i];
+    results[currentKey] = iteratee(obj[currentKey],currentKey,obj);
+  }
+  return results;
+}
 _.mapObject = function(obj,iteratee,context){
   iteratee = cb(iteratee,context);
   var keys = _.keys(obj),
@@ -155,6 +192,15 @@ _.pairs = function(obj){
   var length = keys.length;
   var pairs = Array(length);
   for(var i = 0;i<length;i++){
+    pairs[i] = [keys[i],obj[keys[i]]];
+  }
+  return pairs;
+}
+_.pairs = function(obj){
+  var keys = _.keys(obj);
+  var length = keys.length;
+  var pairs = Array(length);
+  for(var i=0;i<length;i++){
     pairs[i] = [keys[i],obj[keys[i]]];
   }
   return pairs;
@@ -201,10 +247,25 @@ _.invert = function(obj){
   }
   return results;
 }
+_.invert = function(obj){
+  var results = {};
+  var keys = _.keys(obj);
+  for(var i=0,length = keys.length;i<length;i++){
+     resutls[obj[keys[i]]] = keys[i];
+  }
+  return resutls;
+}
 _.functions = _.methods = function(obj){
   var names = [];
   for(var key in obj){
     if(_.isFunction(obj[key])) names.push(key);
+  }
+  return names.sort();
+}
+_.functions = _.methods = function(obj){
+  var names = [];
+  for(var key in obj){
+    if(_.isFunction(obj[key]))names.push(key);
   }
   return names.sort();
 }
