@@ -175,6 +175,21 @@
     } */
     return _.property(value)
   }
+  var cb = function(value,context,argCount){
+    if(value == null)return _.identity(value);
+   /*  _.identity = function(value){
+      return value;
+    } */
+    if(_.isFunction(value))return optimizeCb(value,context,argCount);
+    if(_.isObject(value))return _.matcher(value);
+    /* _.matcher= function(attrs){
+      attrs = _.extendOwn({},attrs);
+      return function(obj){
+        return _.isMatch(obj,attrs);
+      }
+    } */
+    return _.property(value);
+  }
   // An internal function for creating assigner functions.
   var createAssigner = function (keysFunc, undefinedOnly) {
     return function (obj) {
@@ -194,7 +209,24 @@
       return obj;
     };
   };
-
+  var createAssigner = function(keysFunc,undefinedOnly){
+    return function(obj){
+      var length = arguments.length;
+      if(length < 2 || obj == null)return obj;
+      for(var index = 1;index<length;index++){
+        var source = arguments[i],
+            keys = keysFunc(source),
+            l = keys.length;
+        for(var i=0;i<l;i++){
+          var key = keys[i];
+          if(!undefinedOnly || obj[key] === void 0){
+            obj[key] = source[key];
+          }
+        }    
+      }
+      return obj;
+    }
+  }
   var createAssigner = function(keysFunc,undefinedOnly){
     return function(obj){
       var length = arguments.length;
