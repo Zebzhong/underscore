@@ -1,6 +1,6 @@
 var hasEnumBug = !{
   toString: null
-}.propertyIsEnumerable('toString');
+}.propertyIsEnumerable('toString'); //是在ie9以下
 var nonEnumerableProps = [
   'valueOf',
   'isPrototypeOf',
@@ -31,6 +31,18 @@ _.keys = function(obj){
   var keys = [];
   for(var key in obj){
     if(_.has(obj,key)) keys.push(key);
+  }
+  if(hasEnumBug)collectNonEnumProps(obj,keys);
+  return keys;
+}
+// _.keys({one: 1, two: 2, three: 3});
+// => ["one", "two", "three"]
+_.keys = function(obj){
+  if(!_.isObject(obj))return [];
+  if(nativeKeys)return nativeKeys(obj);
+  var keys = [];
+  for(var key in obj){
+    if(_.has(obj,key))keys.push(key);
   }
   if(hasEnumBug)collectNonEnumProps(obj,keys);
   return keys;
@@ -77,6 +89,21 @@ _.keys = function(obj){
   if(hasEnumBug)collectNonEnumProps(obj,keys);
   return keys;
 }
+
+// function Stooge(name) {
+//   this.name = name;
+// }
+// Stooge.prototype.silly = true;
+// _.allKeys(new Stooge("Moe"));
+// => ["name", "silly"]
+_.allKeys = function(obj){
+  if(!_.isObject(obj))return [];
+  var keys = [];
+  for(var key in obj)
+    keys.push(key);
+  if(hasEnumBug) collectNonEnumProps(obj,keys);
+  return keys;
+}
 _.allKeys = function(obj){
   if(!_.isObject(obj))return [];
   var keys = [];
@@ -112,6 +139,17 @@ _.allKeys = function(obj){
   }
   if(hasEnumBug)collectNonEnumProps(obj,keys);
   return keys;
+}
+// _.values({one: 1, two: 2, three: 3});
+// => [1, 2, 3]
+_.values = function(obj){
+  var keys = _.keys(obj),
+      length = keys.length,
+      values = Array(length);
+  for(var i = 0;i<length;i++){
+    values[i] = obj[keys[i]];
+  }
+  return vaules;
 }
 _.values = function(obj){
   var keys = _.keys(obj);
@@ -149,6 +187,22 @@ _.values = function(obj){
   }
   return values;
 }
+// _.mapObject({start: 5, end: 12}, function(val, key) {
+//   return val + 5;
+// });
+// => {start: 10, end: 17}
+_.mapObject = function(obj,iteratee,context){
+  iteratee = cb(iteratee,context);
+  var keys = _.keys(obj),
+      length = keys.length,
+      result = {},
+      currentKey;
+  for(var i = 0;i<length;i++){
+    currentKey = keys[i];
+    result[currentKey] = iteratee(obj[currentKey],currentKey,obj);
+  }
+  return result;
+}
 _.mapObject = function(obj,iteratee,context){
   iteratee = cb(iteratee,context);
   var keys = _.keys(obj),
@@ -156,18 +210,6 @@ _.mapObject = function(obj,iteratee,context){
       results = {},
       currentKey;
   for(var i = 0;i<l;i++){
-    var currentKey = keys[i];
-    results[currentKey] = iteratee(obj[currentKey],currentKey,obj);
-  }
-  return results;
-}
-_.mapObject = function(obj,iteratee,context){
-  iteratee = cb(iteratee,context);
-  var keys = _.keys(obj),
-      length = keys.length,
-      results = {},
-      currentKey;
-  for(var i = 0;i<length;i++){
     currentKey = keys[i];
     results[currentKey] = iteratee(obj[currentKey],currentKey,obj);
   }
@@ -196,6 +238,29 @@ _.mapObject = function(obj,iteratee,context){
     results[currentKey] = iteratee(obj[currentKey],currentKey,obj);
   }
   return results;
+}
+_.mapObject = function(obj,iteratee,context){
+  iteratee = cb(iteratee,context);
+  var keys = _.keys(obj),
+      length = keys.length,
+      results = {},
+      currentKey;
+  for(var i = 0;i<length;i++){
+    currentKey = keys[i];
+    results[currentKey] = iteratee(obj[currentKey],currentKey,obj);
+  }
+  return results;
+}
+// _.pairs({one: 1, two: 2, three: 3});
+// => [["one", 1], ["two", 2], ["three", 3]]
+_.pairs = function(obj){
+  var keys = _.keys(obj);
+  var length = keys.length;
+  var pairs = Array(length);
+  for(var i = 0;i<length;i++){
+    pairs[i] = [keys[i],obj[keys[i]]];
+  }
+  return pairs;
 }
 _.pairs = function(obj){
   var keys = _.keys(obj);
@@ -233,6 +298,7 @@ _.pairs = function(obj){
   }
   return pairs;
 }
+
 _.invert = function(obj){
   var result = {};
   var keys = _.keys(obj);

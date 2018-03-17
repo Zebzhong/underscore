@@ -37,6 +37,14 @@
     this._wrapped = obj;
   };
 
+  var _ = function(obj){
+    if(obj instanceof _)
+      return obj;
+    if(!(this instanceof _)){
+      return new _(obj);
+    }
+    this._wrapped = obj;
+  }
   // Export the Underscore object for **Node.js**, with backwards-compatibility
   // for the old `require()` API. If we're in the browser, add `_` as a global
   // object.
@@ -189,6 +197,21 @@
     return _.property(value);
   };
   var cb = function(value,context,argCount){
+    if(value == null)
+      return _.identity(value);
+    if(_.isFunction(value))
+      return optimizeCb(value,context,argCount);
+    if(_.isObject(value))
+      return _.matcher(value);
+   /*  _.matcher = function(attrs){
+      attrs = _.extendOwn({},attrs);
+      return function(obj){
+        return _.isMatch(obj,attrs);
+      }
+    }   */
+    return _.property(value);
+  }
+  var cb = function(value,context,argCount){
     if(value == null)return _.identity(value);
     if(_.isFunction(value))return optimizeCb(value,context,argCount);
     if(_.isObject(value))return _.matcher(value);
@@ -266,6 +289,23 @@
       }
     } */
     return _.property(value);
+  }
+  var createAssigner = function(keysFunc,undefinedOnly){
+    return function(obj){
+      var length = arguments.length;
+      if(length < 2 || obj == null)return obj;
+      for(var index = 1;index<lenght;index++){
+        var source = arguments[index],
+            keys = keysFunc(source),
+            len = keys.length;
+        for(var i = 0;i<length;i++){
+          var key = keys[i];
+          if(!undefinedOnly || obj[key] === void 0)
+            obj[key] = source[key];
+        }    
+      }
+      return obj;
+    }
   }
   // An internal function for creating assigner functions.
   var createAssigner = function (keysFunc, undefinedOnly) {
@@ -458,7 +498,14 @@
     Ctor.prototype = null;
     return result;
   };
-
+  var baseCreat = function(prototype){
+    if(!_.isObject(prototype))return {};
+    if(nativeCreate)return nativeCreate(prtotype);
+    Ctor.prototype = prototype;
+    var result = new Ctor;
+    Ctor.prototype = null;
+    return result;
+  }
   var baseCreate = function(prototype){
     if(!_.isObject(prototype))return {};
     if(nativeCreate)return nativeCreate(prototype);
@@ -525,6 +572,11 @@
     }
   }
   var property = function(key){
+    return function(obj){
+      return obj == null ? void 0 : obj[key];
+    }
+  }
+  var property = function(key){
     return obj == null ? void 0 : obj[key];
   }
   var property = function(key){
@@ -560,6 +612,11 @@
     return instance;
   }
 
+  _.chain = function(obj){
+    var instance = _(obj);
+    instance._chain = true;
+    return instance;
+  }
   // OOP --------------- If Underscore is called as a function, it returns a
   // wrapped object that can be used OO-style. This wrapper holds altered versions
   // of all the underscore functions. Wrapped objects may be chained. Helper
@@ -567,23 +624,59 @@
   var result = function (instance, obj) {
     return instance._chain ?  _(obj).chain() : obj;
   };
-
+  var result = function (instance,obj){
+    return instance._chain ?　_(obj).chain() : obj;
+  }
   var result = function(instance,obj){
     return instance._chain ? _(obj).chain() : obj;
   }
 
+  _.chain = function(obj){
+    var instance = _(obj);
+    instance._chain = true;
+    return instance;
+  }
+
+  var result = function(instance,obj){
+    return instance._chain ? _(obj).chain() : obj;
+  }
+  // 可向 underscore 函数库扩展自己的方法
+  // obj 参数必须是一个对象（JavaScript 中一切皆对象）
+  // 且自己的方法定义在 obj 的属性上
+  // 如 obj.myFunc = function() {...}
+  // 形如 {myFunc: function(){}}
+  // 之后便可使用如下: _.myFunc(..) 或者 OOP _(..).myFunc(..)
   // Add your own custom functions to the Underscore object.
   _.mixin = function (obj) {
     _.each(_.functions(obj), function (name) {
-        var func = _[name] = obj[name];
-        _.prototype[name] = function () {
-          var args = [this._wrapped];
-          push.apply(args, arguments);
-          return result(this, func.apply(_, args));
-        };
-      });
+      var func = _[name] = obj[name];
+      _.prototype[name] = function () {
+        var args = [this._wrapped];
+        push.apply(args, arguments);
+        return result(this, func.apply(_, args));
+      };
+    });
   };
-
+  _.mixin = function(obj){
+    _.each(_.functions(obj),function(name){
+      var func = _[name] = obj[name];
+      _.prototype[name] = function(){
+        var args = [this._wrapped];
+        push.apply(args,arguments);
+        return result(this,func.apply(_,args));
+      }
+    })
+  }
+  _.mixin = function(obj){
+    _.each(_.functions(obj),function(name){
+      var func = _[name] = obj[name];
+      _.prototype[name] = function(){
+        var args = [this._wrapped];
+        push.apply(args,arguments);
+        return result(this,func.apply(_,args));
+      }
+    })
+  }
   // Add all of the Underscore functions to the wrapper object.
   _.mixin(_);
 
@@ -606,20 +699,93 @@
       return result(this, obj);
     };
   });
-
+  _.each([
+    'pop',
+    'push',
+    'shift',
+    'unshift',
+    'splice',
+    'sort',
+    'reverse'
+  ],function(name){
+    var method = ArrayProto[name];
+    _.prototype[method] = function(){
+      var obj = this._wrapped;
+      method.apply(obj,arguments);
+      if ((name === 'shift' || name === 'splice') && obj.length === 0) 
+        delete obj[0];
+      return result(this,obj);
+    }
+  })
+  //将原生的数组方法加到underscore的原型上，这些方法是改变原数组的
+  _.each(['pop',
+    'push',
+    'reverse',
+    'shift',
+    'sort',
+    'splice',
+    'unshift'],function(name){
+      var method = ArrayProto[name];
+      _.prototype[name] = function(){
+        var obj = this._wrapped;
+        method.apply(obj,arguments);
+        if((name === 'shift' || name === 'splice') && obj.length === 0){
+          delete obj[0];
+        }
+        return result(this,obj);
+      }
+    })
+  _.each(['pop',
+    'push',
+    'reverse',
+    'shift',
+    'sort',
+    'splice',
+    'unshift'],function(name){
+      var method = ArrayProto[name];
+      _.prototype[name] = function(){
+        var obj = this._wrapped
+        method.apply(obj,arguments);
+        if((name === 'shift' || name === 'splice') && obj.length === 0){
+          delete obj[0];
+        }
+        return result(this,obj);
+      }
+    })  
   // Add all accessor Array functions to the wrapper.
+    //将原生的数组方法加到underscore的原型上，这些方法是不改变原数组的
   _.each(['concat', 'join', 'slice'], function (name) {
     var method = ArrayProto[name];
     _.prototype[name] = function () {
       return result(this, method.apply(this._wrapped, arguments));
     };
   });
-
+  _.each(['concat', 'join', 'slice'],function(name){
+    var method = ArrayProto[name];
+    _.prototype[name] = function(){
+      return result(this,method.apply(this._wrapped,arguments));
+    }
+  })
+  _each(['concat','join','slice'],function(name){
+    var method = ArrayProto[name];
+    _.prototype[name] = function(){
+      return result(this,method.apply(this._wrapped,arguments))
+    }
+  })
+  _.each(['concat','join','slice'],function(name){
+    var method = ArrayProto[name];
+    _.prototype[name] = function(){
+      return result(this,method.apply(this._wrapped,arguments))
+    }
+  })
   // Extracts the result from a wrapped and chained object.
   _.prototype.value = function () {
     return this._wrapped;
   };
 
+  _.prototype.value = function(){
+    return this._wrapped;
+  }
   // Provide unwrapping proxy for some methods used in engine operations such as
   // arithmetic and JSON stringification.
   _.prototype.valueOf = _.prototype.toJSON = _.prototype.value;
