@@ -9,7 +9,7 @@ _.first = _.head = _.take = function(array,n,guard){
 /* _.initial([5, 4, 3, 2, 1]);
 => [5, 4, 3, 2] */
 _.inital = function(array,n,guard){
-  return slice.call(array,Math.max(0,array.length - (n == null || guard ? 1:n)));
+  return slice.call(array,0,Math.max(0,array.length - (n == null || guard ? 1:n)));
 }
 _.first = _.head = _.take = function (array, n, guard) {
   if (array == null) 
@@ -243,9 +243,9 @@ _.intersection = function(array){
   var argsLength = arguments.length;
   for(var i = 0,length = array.length;i<length;i++){
     var item = array[i];
-    if(_.contain(result,item))continue;
+    if(_.contains(result,item))continue;
     for(var j = 1;j<argsLength;j++){
-      if(!_.contain(arguments[j],item))break;
+      if(!_.contains(arguments[j],item))break;
     }
     if(j === argsLength)result.push(item);
   }
@@ -255,9 +255,9 @@ _.intersection = function(array){
   var result = [];
   var argsLength = arguments.length;
   for(var i =0,length = array.length;i<length;i++){
-    if(_.contain(result,item))continue;
+    if(_.contains(result,item))continue;
     for(var j=1;j<argsLength;j++){
-      if(!_.contain(arguments[j],item))break;
+      if(!_.contains(arguments[j],item))break;
     }
     if(j===argsLength)result.push(item);
   }
@@ -267,9 +267,9 @@ _.intersection = function(array){
   var result = [];
   var argsLength = arguments.length;
   for(var i = 0,length = getLength(array);i<length;i++){
-    if(_.contain(result,item))continue;
+    if(_.contains(result,item))continue;
     for(var j = 1;j<argsLength;j++){
-      if(!_.contain(arguments[j],item))break;
+      if(!_.contains(arguments[j],item))break;
     }
     if(j===argsLength)result.push(item);
   }
@@ -293,9 +293,9 @@ _.intersection = function(array){
   var argsLength = arguments.length;
   for(var i = 0,length = getLength(array);i<length;i++){
     var item = array[i];
-    if(_.contain(array,item))continue;//有则跳出 没有则往下走
+    if(_.contains(array,item))continue;//有则跳出 没有则往下走
     for(var j = 1;j<argsLength;j++){
-      if(!_.contain(arguments[j],item)) break;//没有则跳出当前循环
+      if(!_.contains(arguments[j],item)) break;//没有则跳出当前循环
     }
     if(j === argsLength)result.push(item);
   }
@@ -535,3 +535,125 @@ _.range = function(start, stop, step) {
 
   return range;
 };
+// ------------------------------------------------------
+_.first = function(array,n,guard){
+  if(array == null)return void 0;
+  if(n == null || guard) return array[0];
+  return _.inital(array,array.length - n);
+}
+
+_.inital = function(array,n,guard){
+  return slice.call(arguments,0,Math.max(0,array.length - (n == null || guard ? 1 : n)));
+}
+
+_.last = function(array,n,guard){
+  if(array == null)return void 0;
+  if(n == null || guard) return array[array.length - 1];
+  return _.rest(array,Math.max(0,array.length-n));
+}
+
+_.rest = function(array,n,guard){
+  return slice.call(arguments,n==null || guard ? 1 : n);
+}
+
+_.compact = function(array){
+  return _.filter(array,_.idenity);
+}
+
+var flatten = function(input,shallow,strict,startIndex){
+  var output = [],idx = 0;
+  for(var i = startIndex || 0,length = getLength(input);i<length;i++){
+    var value = input[i];
+    if(isArrayLike(value) && (_.isArray(value) || _.isArguments(value))){
+      if(!shallow) value = flatten(value,shallow,strict);
+      var j = 0 ,len = value.length;
+      while(j<len){
+        output[idx++] = value[j++];
+      }
+    }else if(!strict){
+      output[idx++] = value;
+    }
+  }
+  return output;
+}
+
+_.flatten = function(array,shallow){
+  return flatten(array,shallow,false);
+}
+
+_.without = function(array) {
+  return _.difference(array, slice.call(arguments, 1));
+};
+
+_.intersection = function(array){
+  var argsLength = arguments.length;
+  var result = [];
+  for(var i = 0,length = getLength(array);i<length;i++){
+    var item = array[i];
+    if(_.contains(result,item))continue;
+    for(var j = 1;j<argsLength;j++){
+      if(!_.contains(arguments[j],item))break;
+    }
+    if(j === argsLength)result.push(item);
+  }
+  return result;
+}
+
+_.difference = function(array){
+  var rest = flatten(arguments,ture,ture,1);
+  return _.filter(array,function(value){
+    return !_.contains(rest,value);
+  })
+}
+
+_.zip = function(){
+  return _.unzip(arguments);
+}
+_.unzip = function(array){
+  var length = array && _.max(array,getLength).length;
+  var result = Array(length);
+  for(var index = 0;index < length;index++){
+    result[index] = _.pluck(array,index);
+  }
+  return result;
+}
+
+_.object = function(list,values){
+  var length = getLength(list);
+  var result = {};
+  for(var i = 0;i<length;i++){
+    if(value){
+      result[list[i]] = values[i];
+    }else{
+      result[list[i][0]] = list[i][1];
+    }
+  }
+  return result;
+}
+
+function createPredicateIndexFinder(dir){
+  return function(array,predicate,context){
+    predicate = iteratee(predicate,context);
+    var index = dir > 0 ? 0 : length - 1 ;
+    for(;index >= 0 && index < length;index += dir){
+      if(predicate(array[index],index,array))return index;
+    } 
+    return -1;
+  }
+}
+_.findIndex = createPredicateIndexFinder(1);
+_.findLastIndex = createPredicateIndexFinder(-1);
+
+_.range = function(start,stop,step){
+  if(stop == null){
+    stop = start || 0;
+    start = 0
+  }
+  step = step || 1;
+  var length = Math.max(0,Math.ceil((stop-start)/step));
+  var range = Array(length);
+  for(var i = 0;i<length;i++,start+=step){
+    range[i] = start;
+  }
+  return range;
+}

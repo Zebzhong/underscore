@@ -410,4 +410,60 @@ _.find = _.detect = function(obj,predicate,context){
   if(key !== void 0 && key !== -1)return obj[key];
 }
 
+// -------------------------------------------------
+var MAX_ARRAY_INDEX = Math.pow(2, 53) - 1;
+var isArrayLike = function(collection){
+  var length = getLength(collection);
+  return typeof length === 'number' && length > 0 && length <= MAX_ARRAY_INDEX;
+}
+_.each = function(obj,iteratee,context){
+  iteratee = optimizeCb(iteratee,context);
+  var i,length;
+  if(isArrayLike(obj)){
+    for(i = 0,length = obj.length;i<length;i++){
+      iteratee(obj[i],i,obj);
+    }
+  }else{
+    var keys = _.keys(obj);
+    for(i = 0,length = keys.length;i<length;i++){
+      var key = keys[i];
+      iteratee(obj[key],key,obj);
+    }
+  }
+}
+_.map = function(obj,iteratee,context){
+  iteratee = cb(iteratee,context);
+  var keys = !isArrayLike(obj) && _.keys(obj),
+      length = (keys || obj).length,
+      result = Array(length),
+      currentKey;
+  for(var i = 0;i<length;i++){
+    currentKey = obj[keys ? keys[i]:i];
+    result[i] = iteratee(obj[currentKey],currentKey,obj);
+  }
+  return result;
+}
+function createReduce(dir){
+  function iterator(obj,iteratee,memo,keys,index,length){
+    for(;index >= 0 && index < length;index++){
+      var currentKey = keys ? keys[index]:index;
+      memo = iteratee(obj[currentKey],currentKey,obj);
+    }
+    return memo;
+  }
+  return function(obj,iteratee,memo,context){
+    iteratee = optimizeCb(iteratee,context,4);
+    var keys = !isArrayLike(obj) && _.keys(obj),
+        length = (keys || obj).length,
+        index = dir > 0 ? 0 : length - 1;
+    if(arguments.length < 3){
+      memo = obj[keys ? keys[index]:index];
+      index += dir;
+    }
+    return iterator(obj,iteratee,memo,keys,index,length);
+  }
+}
+_.reduce = createReduce(1);
+
+_.reduceRight = createReduce(-1);
 
